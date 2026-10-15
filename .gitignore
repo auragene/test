@@ -1,0 +1,28 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+
+# Node.js and frontend build output
+node_modules/
+dist/
+dist-ssr/
+
+# Logs and local files
+*.log
+*.local
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
