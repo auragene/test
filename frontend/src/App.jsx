@@ -1,25 +1,36 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
+const PRODUCTS_URL = 'https://test-gcej.onrender.com/products'
+
+const emptyProduct = {
+  name: '',
+  description: '',
+  image_url: '',
+  category: '',
+  price: '',
+  available: true,
+  ingredients: '',
+  prep_time: '',
+  special_notes: '',
+}
+
 function App() {
   const [products, setProducts] = useState([])
+  const [product, setProduct] = useState(emptyProduct)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     async function loadProducts() {
       try {
-        const response = await fetch('https://test-gcej.onrender.com//products')
-
-        if (!response.ok) {
-          throw new Error('Could not load the menu.')
-        }
-
-        const data = await response.json()
-        setProducts(data)
-      } catch (err) {
-        console.error(err)
-        setError('Could not load the menu. Check that the backend is running.')
+        const response = await fetch(PRODUCTS_URL)
+        if (!response.ok) throw new Error('Could not load the menu.')
+        setProducts(await response.json())
+      } catch (error) {
+        console.error(error)
+        setMessage('Could not load the menu.')
       } finally {
         setLoading(false)
       }
@@ -28,36 +39,118 @@ function App() {
     loadProducts()
   }, [])
 
+  function updateField(event) {
+    const { name, value, type, checked } = event.target
+    setProduct({
+      ...product,
+      [name]: type === 'checkbox' ? checked : value,
+    })
+  }
+
+  async function createProduct(event) {
+    event.preventDefault()
+    setSaving(true)
+    setMessage('')
+
+    try {
+      const newProduct = {
+        ...product,
+        price: Number(product.price),
+        ingredients: product.ingredients
+          .split(',')
+          .map((ingredient) => ingredient.trim())
+          .filter(Boolean),
+      }
+
+      const response = await fetch(PRODUCTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct),
+      })
+
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Could not create product.')
+
+      setProducts([...products, result])
+      setProduct({ ...emptyProduct })
+      setMessage('Product created.')
+    } catch (error) {
+      console.error(error)
+      setMessage(error.message || 'Could not create product.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <main className="menu-page">
       <h1>Our Menu</h1>
 
+      <form onSubmit={createProduct}>
+        <h2>Add a product</h2>
+
+        <label>
+          Name
+          <input name="name" value={product.name} onChange={updateField} required />
+        </label>
+        <label>
+          Description
+          <input name="description" value={product.description} onChange={updateField} required />
+        </label>
+        <label>
+          Category
+          <input name="category" value={product.category} onChange={updateField} required />
+        </label>
+        <label>
+          Price
+          <input name="price" type="number" min="0" value={product.price} onChange={updateField} required />
+        </label>
+        <label>
+          Image URL
+          <input name="image_url" value={product.image_url} onChange={updateField} />
+        </label>
+        <label>
+          Ingredients (separate with commas)
+          <input name="ingredients" value={product.ingredients} onChange={updateField} />
+        </label>
+        <label>
+          Preparation time
+          <input name="prep_time" value={product.prep_time} onChange={updateField} />
+        </label>
+        <label>
+          Special notes
+          <input name="special_notes" value={product.special_notes} onChange={updateField} />
+        </label>
+        <label>
+          <input name="available" type="checkbox" checked={product.available} onChange={updateField} />
+          Available
+        </label>
+        <button type="submit" disabled={saving}>
+          {saving ? 'Saving...' : 'Create product'}
+        </button>
+      </form>
+
+      {message && <p>{message}</p>}
       {loading && <p>Loading menu...</p>}
-      {error && <p className="page-message--error">{error}</p>}
-      {!loading && !error && products.length === 0 && <p>No menu items found.</p>}
+      {!loading && products.length === 0 && <p>No menu items found.</p>}
 
       <section className="product-grid">
-        {products.map((product) => (
-          <article className="product-card" key={product._id}>
-            {product.image_url && (
-              <img
-                className="product-card__image"
-                src={product.image_url}
-                alt={product.name}
-              />
+        {products.map((item) => (
+          <article className="product-card" key={item._id}>
+            {item.image_url && (
+              <img className="product-card__image" src={item.image_url} alt={item.name} />
             )}
-
             <div className="product-card__content">
-              <p className="product-card__category">{product.category}</p>
+              <p className="product-card__category">{item.category}</p>
               <div className="product-card__title-row">
-                <h2>{product.name}</h2>
-                <p className="product-card__price">₹{product.price}</p>
+                <h2>{item.name}</h2>
+                <p className="product-card__price">₹{item.price}</p>
               </div>
-              <p className="product-card__description">{product.description}</p>
-              <p>Ingredients: {product.ingredients?.join(', ')}</p>
-              <p>Preparation time: {product.prep_time}</p>
-              <p>{product.special_notes}</p>
-              <p>{product.available ? 'Available' : 'Unavailable'}</p>
+              <p className="product-card__description">{item.description}</p>
+              <p>Ingredients: {item.ingredients?.join(', ')}</p>
+              <p>Preparation time: {item.prep_time}</p>
+              <p>{item.special_notes}</p>
+              <p>{item.available ? 'Available' : 'Unavailable'}</p>
             </div>
           </article>
         ))}
