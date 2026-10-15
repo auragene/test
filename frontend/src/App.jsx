@@ -9,7 +9,7 @@ function App() {
   useEffect(() => {
     async function loadProducts() {
       try {
-        const response = await fetch('http://localhost:5000/products')
+        const response = await fetch('https://test-gcej.onrender.com//products')
 
         if (!response.ok) {
           throw new Error('Could not load the menu.')
