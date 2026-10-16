@@ -27,16 +27,19 @@ const Login = () => {
       const response = await fetch('https://test-gcej.onrender.com/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        alert(data.message);
+        alert(data.message || 'Login successful');
         navigate('/dashboard');
       } else {
-        alert(`Error: ${data.message}`);
+        alert(data.error || data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Error logging in:', error);
@@ -77,3 +80,5 @@ const Login = () => {
 }
 
 export default Login
+
+//scrypt:32768:8:1$Yu8rANaUC5SoVsjQ$a3abeef28ad48e5e5382d046e7511044376f79f98880df20be25854d1b0ca399b611d9df64235f59cfaa09d320be66f23b8252fe4efa897bc8096dd03716a262
