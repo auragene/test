@@ -1,6 +1,15 @@
+import os
+import sys
 from flask import Blueprint, request, jsonify
-from database.db import hotel_staffs_collection
 from werkzeug.security import check_password_hash
+
+backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if backend_root not in sys.path:
+    sys.path.insert(0, backend_root)
+
+from database.db import client
+
+LOGIN_DATABASE_NAME = "aura_grand_hotel"
 
 hotel_staff_bp = Blueprint('hotel_staff', __name__)
 
@@ -11,12 +20,15 @@ def login():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid request data"}), 400
 
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
+    email = data.get("email")
+    password = data.get("password")
 
-    if not email or not password:
+    if not all(isinstance(value, str) and value.strip() for value in (email, password)):
         return jsonify({"error": "Email and password are required"}), 400
 
+    email = email.strip().lower()
+    database_name = LOGIN_DATABASE_NAME
+    hotel_staffs_collection = client[database_name]["hotel_staff"]
     user = hotel_staffs_collection.find_one({"email": email})
     if not user:
         return jsonify({"error": "Invalid email or password"}), 401
@@ -25,10 +37,26 @@ def login():
     if not stored_hash or not check_password_hash(stored_hash, password):
         return jsonify({"error": "Invalid email or password"}), 401
 
+    configured_database_name = user.get("database_name")
+    if not isinstance(configured_database_name, str) or not configured_database_name.strip():
+        return jsonify({"error": "Database is not configured for this account"}), 500
+
+    database_name = configured_database_name.strip()
     user_data = {
         "_id": str(user.get("_id")),
         "email": user.get("email"),
-        "name": user.get("name")
+        "name": user.get("name"),
+        "role": user.get("role", "staff")
     }
 
-    return jsonify({"message": "Login successful", "user": user_data}), 200
+    account_info = {
+        "database": database_name,
+        "collection": hotel_staffs_collection.name,
+        "role": user_data["role"]
+    }
+
+    return jsonify({
+        "message": "Login successful",
+        "user": user_data,
+        "account": account_info
+    }), 200
