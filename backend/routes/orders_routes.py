@@ -26,6 +26,21 @@ def get_orders():
     return jsonify(orders), 200
 
 
+@orders_bp.route('/reset-served-orders', methods=['DELETE'])
+def reset_served_orders():
+    database_name = session.get("database_name")
+    if not database_name:
+        return jsonify({"error": "Authentication required"}), 401
+
+    result = client[database_name]["orders"].delete_many({
+        "status": {"$in": ["served", "completed"]}
+    })
+    return jsonify({
+        "message": "Served orders reset.",
+        "deleted_count": result.deleted_count,
+    }), 200
+
+
 @orders_bp.route('/create-order', methods=['POST'])
 def create_order():
     database_name = session.get("database_name")

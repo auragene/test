@@ -41,6 +41,7 @@ const Orders = () => {
   const [showServed, setShowServed] = useState(false)
   const [message, setMessage] = useState('')
   const [soundEnabled, setSoundEnabled] = useState(false)
+  const [resettingServed, setResettingServed] = useState(false)
 
   const loadOrders = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true)
@@ -136,6 +137,40 @@ const Orders = () => {
     }
   }
 
+  async function resetServedOrders() {
+    const servedCount = orders.filter((order) => ['served', 'completed'].includes(order.status)).length
+    if (!servedCount || !window.confirm(`Delete all ${servedCount} served orders? This cannot be undone.`)) {
+      return
+    }
+
+    setResettingServed(true)
+    setMessage('')
+    try {
+      const response = await fetch(`${API_URL}/reset-served-orders`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const result = await response.json()
+      if (response.status === 401) {
+        sessionStorage.removeItem('account')
+        clearDashboardTheme()
+        navigate('/login', { replace: true })
+        return
+      }
+      if (!response.ok) throw new Error(result.error || 'Could not reset served orders.')
+
+      setOrders((current) =>
+        current.filter((order) => !['served', 'completed'].includes(order.status)),
+      )
+      setMessage(`${result.deleted_count || 0} served order(s) reset.`)
+    } catch (error) {
+      console.error('Error resetting served orders:', error)
+      setMessage(error.message || 'Could not reset served orders.')
+    } finally {
+      setResettingServed(false)
+    }
+  }
+
   const visibleOrders = showServed
     ? orders.filter((order) => ['served', 'completed'].includes(order.status))
     : orders.filter((order) => !['served', 'completed'].includes(order.status))
@@ -179,6 +214,16 @@ const Orders = () => {
               </button>
             </div>
             <div className="orders-toolbar__actions">
+              {showServed && (
+                <button
+                  className="orders-reset-served"
+                  type="button"
+                  onClick={resetServedOrders}
+                  disabled={resettingServed || visibleOrders.length === 0}
+                >
+                  {resettingServed ? 'Resetting...' : 'Reset served orders'}
+                </button>
+              )}
               <button type="button" onClick={() => setSoundEnabled((enabled) => !enabled)}>
                 <span aria-hidden="true">◖</span> {soundEnabled ? 'Disable Sound' : 'Enable Sound'}
               </button>
@@ -187,9 +232,6 @@ const Orders = () => {
               </button>
             </div>
           </div>
-
-          {message && <p className="orders-message" role="status">{message}</p>}
-          {loading && <p className="orders-message" role="status">Refreshing orders...</p>}
 
           {!showServed ? (
             <section className="orders-board" aria-label="Active orders by status">
@@ -277,6 +319,8 @@ const Orders = () => {
               )}
             </section>
           )}
+          {message && <p className="orders-message" role="status">{message}</p>}
+          {loading && <p className="orders-message" role="status">Refreshing orders...</p>}
         </section>
     </main>
   )

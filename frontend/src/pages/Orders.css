@@ -386,8 +386,20 @@
 .orders-served {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-auto-rows: 1fr;
   align-items: start;
   gap: 12px;
+}
+
+.orders-served .order-card {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.orders-served .order-card__footer {
+  margin-top: auto;
+  padding-top: 9px;
 }
 
 .orders-message {
@@ -460,6 +472,42 @@
   border-top: 3px solid var(--orders-primary);
   border-radius: 14px;
   background: #f0f3f2;
+}
+
+.admin-page > .orders-main .orders-column {
+  box-shadow: 0 8px 22px rgb(35 52 57 / 3%);
+}
+
+.admin-page > .orders-main .order-card {
+  transition: transform 170ms ease, box-shadow 170ms ease, border-color 170ms ease;
+}
+
+.admin-page > .orders-main .order-card:hover {
+  border-color: color-mix(in srgb, var(--orders-primary) 22%, white);
+  box-shadow: 0 11px 24px rgb(35 52 57 / 9%);
+  transform: translateY(-2px);
+}
+
+.admin-page > .orders-main .orders-tabs button,
+.admin-page > .orders-main .orders-toolbar__actions button {
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.admin-page > .orders-main .orders-toolbar__actions button:hover {
+  color: var(--orders-primary);
+  transform: translateY(-1px);
+}
+
+.admin-page > .orders-main .orders-toolbar__actions .orders-reset-served {
+  border-color: #f0d8d5;
+  background: #fff8f7;
+  color: #a74b43;
+}
+
+.admin-page > .orders-main .orders-toolbar__actions .orders-reset-served:hover:not(:disabled) {
+  border-color: #dfaaa4;
+  background: #fff0ee;
+  color: #8f382f;
 }
 
 .admin-page > .orders-main .orders-column--2,

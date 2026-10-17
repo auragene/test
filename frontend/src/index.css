@@ -29,6 +29,17 @@ body {
   min-height: 100vh;
   margin: 0;
   background: var(--page-background);
+  color: #263238;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+button,
+a {
+  touch-action: manipulation;
 }
 
 button,

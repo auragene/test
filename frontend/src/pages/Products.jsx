@@ -239,20 +239,22 @@ const Products = () => {
             {item.prep_time && <p>Preparation time: {item.prep_time}</p>}
             {item.special_notes && <p>{item.special_notes}</p>}
             <p>{item.available ? 'Available' : 'Unavailable'}</p>
-            <button
-              type="button"
-              onClick={() => startEdit(item)}
-              disabled={saving || deletingProductId !== null}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => deleteProduct(item)}
-              disabled={saving || deletingProductId !== null}
-            >
-              {deletingProductId === item._id ? 'Deleting...' : 'Delete'}
-            </button>
+            <div className="product-card-actions">
+              <button
+                type="button"
+                onClick={() => startEdit(item)}
+                disabled={saving || deletingProductId !== null}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteProduct(item)}
+                disabled={saving || deletingProductId !== null}
+              >
+                {deletingProductId === item._id ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </article>
         ))}
       </section>

@@ -203,7 +203,14 @@ const Tables = () => {
       {!loading && !message && tables.length === 0 && <p>No tables found.</p>}
 
       <section aria-label="Tables">
-        {tables.map((table) => (
+        {[...tables]
+          .sort((firstTable, secondTable) =>
+            (firstTable.table_name || '').localeCompare(secondTable.table_name || '', undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            }),
+          )
+          .map((table) => (
           <article key={table._id}>
             <h2>{table.table_name || 'Unnamed table'}</h2>
             <p>Next customer number: {(table.customer_sequence || 0) + 1}</p>
@@ -226,27 +233,29 @@ const Tables = () => {
                 </p>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => startEdit(table)}
-              disabled={saving || deletingTableId !== null || resettingTableId !== null}
-            >
-              Edit name
-            </button>
-            <button
-              type="button"
-              onClick={() => deleteTable(table)}
-              disabled={saving || deletingTableId !== null || resettingTableId !== null}
-            >
-              {deletingTableId === table._id ? 'Deleting...' : 'Delete'}
-            </button>
-            <button
-              type="button"
-              onClick={() => resetCustomerNumbering(table)}
-              disabled={saving || deletingTableId !== null || resettingTableId !== null}
-            >
-              {resettingTableId === table._id ? 'Resetting...' : 'Reset numbering'}
-            </button>
+            <div className="table-card-actions">
+              <button
+                type="button"
+                onClick={() => startEdit(table)}
+                disabled={saving || deletingTableId !== null || resettingTableId !== null}
+              >
+                Edit name
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteTable(table)}
+                disabled={saving || deletingTableId !== null || resettingTableId !== null}
+              >
+                {deletingTableId === table._id ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                type="button"
+                onClick={() => resetCustomerNumbering(table)}
+                disabled={saving || deletingTableId !== null || resettingTableId !== null}
+              >
+                {resettingTableId === table._id ? 'Resetting...' : 'Reset numbering'}
+              </button>
+            </div>
           </article>
         ))}
       </section>
