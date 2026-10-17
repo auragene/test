@@ -1,3 +1,8 @@
+import os
+import uuid
+
+import cloudinary
+import cloudinary.uploader
 from flask import Blueprint, request, jsonify, session
 from bson import ObjectId
 from database.db import client
@@ -6,6 +11,25 @@ from pymongo import ReturnDocument
 
 
 products_bp = Blueprint('products', __name__)
+
+MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+def _cloudinary_is_configured():
+    return all(
+        os.getenv(name)
+        for name in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET")
+    )
+
+
+def _configure_cloudinary():
+    cloudinary.config(
+        cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
+        api_key=os.environ["CLOUDINARY_API_KEY"],
+        api_secret=os.environ["CLOUDINARY_API_SECRET"],
+        secure=True,
+    )
 
 
 def _validate_product_updates(data):
@@ -18,6 +42,7 @@ def _validate_product_updates(data):
         "category",
         "price",
         "image_url",
+        "image_public_id",
         "ingredients",
         "prep_time",
         "special_notes",
@@ -53,11 +78,51 @@ def _validate_product_updates(data):
     if "available" in updates and not isinstance(updates["available"], bool):
         return None, "Available must be true or false"
 
-    for field in ("image_url", "prep_time", "special_notes"):
+    for field in ("image_url", "image_public_id", "prep_time", "special_notes"):
         if field in updates and not isinstance(updates[field], str):
             return None, f"{field.replace('_', ' ').capitalize()} must be a string"
 
     return updates, None
+
+
+@products_bp.route('/upload-product-image', methods=['POST'])
+def upload_product_image():
+    """Upload one product image and return the permanent Cloudinary URL."""
+    if not session.get("database_name"):
+        return jsonify({"error": "Authentication required"}), 401
+
+    if not _cloudinary_is_configured():
+        return jsonify({"error": "Image uploads are not configured on the server"}), 503
+
+    image = request.files.get("image")
+    if image is None or not image.filename:
+        return jsonify({"error": "Choose an image to upload"}), 400
+    if image.mimetype not in ALLOWED_IMAGE_MIME_TYPES:
+        return jsonify({"error": "Use a JPG, PNG, WEBP, or GIF image"}), 400
+
+    image.stream.seek(0, 2)
+    image_size = image.stream.tell()
+    image.stream.seek(0)
+    if image_size > MAX_IMAGE_SIZE_BYTES:
+        return jsonify({"error": "Image must be 10 MB or smaller"}), 400
+
+    _configure_cloudinary()
+    try:
+        result = cloudinary.uploader.upload(
+            image,
+            folder="Auragrand",
+            public_id=uuid.uuid4().hex,
+            resource_type="image",
+            allowed_formats=["jpg", "jpeg", "png", "webp", "gif"],
+            transformation=[{"width": 1200, "height": 1200, "crop": "limit", "quality": "auto", "fetch_format": "auto"}],
+        )
+    except Exception:
+        return jsonify({"error": "Image upload failed. Please try again."}), 502
+
+    return jsonify({
+        "image_url": result["secure_url"],
+        "image_public_id": result["public_id"],
+    }), 201
 
 
 @products_bp.route('/get-products', methods=['GET'])

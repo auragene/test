@@ -4,3 +4,4 @@ pymongo>=4.13,<5
 python-dotenv>=1.1,<2
 gunicorn>=23,<24
 Flask-Session
+cloudinary>=1.44,<2

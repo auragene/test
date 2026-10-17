@@ -7,6 +7,7 @@ const emptyProduct = {
   category: '',
   price: '',
   image_url: '',
+  image_public_id: '',
   ingredients: '',
   prep_time: '',
   special_notes: '',
@@ -19,6 +20,7 @@ const Products = () => {
   const [editingProductId, setEditingProductId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [deletingProductId, setDeletingProductId] = useState(null)
   const [message, setMessage] = useState('')
 
@@ -65,6 +67,7 @@ const Products = () => {
       category: item.category || '',
       price: item.price ?? '',
       image_url: item.image_url || '',
+      image_public_id: item.image_public_id || '',
       ingredients: Array.isArray(item.ingredients)
         ? item.ingredients.join(', ')
         : item.ingredients || '',
@@ -73,6 +76,45 @@ const Products = () => {
       available: item.available ?? true,
     })
     setMessage('')
+  }
+
+  async function uploadImage(event) {
+    const image = event.target.files?.[0]
+    if (!image) return
+
+    if (!image.type.startsWith('image/')) {
+      setMessage('Choose a valid image file.')
+      event.target.value = ''
+      return
+    }
+
+    setUploadingImage(true)
+    setMessage('')
+    try {
+      const formData = new FormData()
+      formData.append('image', image)
+      const response = await fetch(`${API_URL}/upload-product-image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Could not upload image.')
+      }
+      setProduct((currentProduct) => ({
+        ...currentProduct,
+        image_url: result.image_url,
+        image_public_id: result.image_public_id,
+      }))
+      setMessage('Image uploaded. It will be saved with this product.')
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      setMessage(error.message || 'Could not upload image.')
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
+    }
   }
 
   async function saveProduct(event) {
@@ -189,9 +231,18 @@ const Products = () => {
           />
         </label>
         <label>
-          Image URL
-          <input name="image_url" type="url" value={product.image_url} onChange={updateField} />
+          Product image
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={uploadImage}
+            disabled={saving || uploadingImage}
+          />
         </label>
+        {uploadingImage && <p>Uploading image...</p>}
+        {product.image_url && (
+          <img src={product.image_url} alt="Selected product preview" style={{ maxWidth: '180px' }} />
+        )}
         <label>
           Ingredients (comma-separated)
           <input name="ingredients" value={product.ingredients} onChange={updateField} />
@@ -213,8 +264,8 @@ const Products = () => {
           />
           Available
         </label>
-        <button type="submit" disabled={saving}>
-          {saving ? 'Saving...' : editingProductId ? 'Update product' : 'Create product'}
+        <button type="submit" disabled={saving || uploadingImage}>
+          {saving ? 'Saving...' : uploadingImage ? 'Uploading image...' : editingProductId ? 'Update product' : 'Create product'}
         </button>
         {editingProductId && (
           <button type="button" onClick={cancelEdit} disabled={saving}>
