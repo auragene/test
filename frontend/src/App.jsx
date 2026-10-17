@@ -7,16 +7,21 @@ import Products from "./pages/Products";
 import Settings from "./pages/Settings";
 import Tables from "./pages/Tables";
 import Customer from "./pages/Customer";
+import Admin from "./pages/admin";
+import AdminLayout from "./components/AdminLayout";
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/tables" element={<Tables />} />
+        <Route element={<AdminLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/tables" element={<Tables />} />
+          <Route path="/admin" element={<Admin />} />
+        </Route>
         <Route path="/customer/table/:tableId" element={<Customer />} />
       </Routes>
     </BrowserRouter>

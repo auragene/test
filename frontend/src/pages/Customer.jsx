@@ -192,7 +192,14 @@ const Customer = () => {
   }
 
   return (
-    <main>
+    <main
+      className="customer-menu"
+      style={{
+        '--brand-primary': settings.primary_color || settings.primaryColor || settings.primary,
+        '--brand-secondary':
+          settings.secondary_color || settings.secondaryColor || settings.secondary,
+      }}
+    >
       <header>
         {settings.logo_url && (
           <img

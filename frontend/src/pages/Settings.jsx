@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react'
 import { API_URL } from '../api'
+import { storeDashboardTheme, themeFromSettings } from '../dashboardTheme'
 
 function displayLabel(key) {
   return key.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+function colorSettingKey(settings, names, fallback) {
+  return names.find((name) => Object.hasOwn(settings, name)) || fallback
+}
+
+function pickerValue(value) {
+  if (typeof value !== 'string') return '#000000'
+  if (/^#[\da-f]{6}$/i.test(value)) return value
+  const shortHex = value.match(/^#([\da-f])([\da-f])([\da-f])$/i)
+  return shortHex ? `#${shortHex[1]}${shortHex[1]}${shortHex[2]}${shortHex[2]}${shortHex[3]}${shortHex[3]}` : '#000000'
 }
 
 const Settings = () => {
@@ -10,10 +22,21 @@ const Settings = () => {
   const [draft, setDraft] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingTheme, setSavingTheme] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [passwords, setPasswords] = useState({ current_password: '', new_password: '' })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const primaryColorKey = colorSettingKey(
+    settings,
+    ['primary_color', 'primaryColor', 'primary'],
+    'primary_color',
+  )
+  const secondaryColorKey = colorSettingKey(
+    settings,
+    ['secondary_color', 'secondaryColor', 'secondary'],
+    'secondary_color',
+  )
 
   useEffect(() => {
     let active = true
@@ -91,6 +114,12 @@ const Settings = () => {
         throw new Error(result.error || 'Could not save settings.')
       }
 
+      try {
+        storeDashboardTheme(themeFromSettings(result))
+      } catch (themeError) {
+        sessionStorage.removeItem('dashboardTheme')
+        setError(`Settings saved, but the dashboard theme is invalid: ${themeError.message}`)
+      }
       setSettings(result)
       setDraft(Object.fromEntries(
         Object.entries(result).map(([key, value]) => [
@@ -106,6 +135,45 @@ const Settings = () => {
       setError(saveError.message || 'Could not save settings.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function saveTheme(event) {
+    event.preventDefault()
+    setSavingTheme(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const updates = {
+        [primaryColorKey]: draft[primaryColorKey] || '',
+        [secondaryColorKey]: draft[secondaryColorKey] || '',
+      }
+      const response = await fetch(`${API_URL}/update-settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Could not save the dashboard colors.')
+      }
+
+      const theme = themeFromSettings(result)
+      storeDashboardTheme(theme)
+      setSettings(result)
+      setDraft((current) => ({
+        ...current,
+        [primaryColorKey]: String(result[primaryColorKey] || ''),
+        [secondaryColorKey]: String(result[secondaryColorKey] || ''),
+      }))
+      setMessage('Dashboard colors saved and applied.')
+    } catch (themeError) {
+      console.error('Error saving dashboard colors:', themeError)
+      setError(themeError.message || 'Could not save dashboard colors.')
+    } finally {
+      setSavingTheme(false)
     }
   }
 
@@ -148,6 +216,78 @@ const Settings = () => {
         {loading && <p>Loading settings...</p>}
         {!loading && Object.keys(draft).length === 0 && (
           <p>No hotel settings are configured yet.</p>
+        )}
+        {!loading && (
+          <div className="settings-theme-panel">
+            <div className="settings-theme-panel__heading">
+              <div>
+                <span>PERSONALIZE YOUR WORKSPACE</span>
+                <h3>Dashboard colors</h3>
+                <p>Choose the two brand colors used across your staff workspace.</p>
+              </div>
+              <div
+                className="settings-theme-preview"
+                style={{
+                  '--preview-primary': pickerValue(draft[primaryColorKey]),
+                  '--preview-secondary': pickerValue(draft[secondaryColorKey]),
+                }}
+                aria-hidden="true"
+              >
+                <i /><i /><i />
+              </div>
+            </div>
+            <form className="settings-theme-form" onSubmit={saveTheme}>
+              <label>
+                Primary color
+                <span className="settings-theme-input">
+                  <input
+                    type="color"
+                    value={pickerValue(draft[primaryColorKey])}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, [primaryColorKey]: event.target.value }))
+                    }
+                    aria-label="Choose primary dashboard color"
+                  />
+                  <input
+                    type="text"
+                    value={draft[primaryColorKey] || ''}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, [primaryColorKey]: event.target.value }))
+                    }
+                    aria-label="Primary color value"
+                    placeholder="#d4fe70"
+                    required
+                  />
+                </span>
+              </label>
+              <label>
+                Secondary color
+                <span className="settings-theme-input">
+                  <input
+                    type="color"
+                    value={pickerValue(draft[secondaryColorKey])}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, [secondaryColorKey]: event.target.value }))
+                    }
+                    aria-label="Choose secondary dashboard color"
+                  />
+                  <input
+                    type="text"
+                    value={draft[secondaryColorKey] || ''}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, [secondaryColorKey]: event.target.value }))
+                    }
+                    aria-label="Secondary color value"
+                    placeholder="#3c6047"
+                    required
+                  />
+                </span>
+              </label>
+              <button type="submit" disabled={savingTheme}>
+                {savingTheme ? 'Applying colors...' : 'Save and apply colors'}
+              </button>
+            </form>
+          </div>
         )}
         {!loading && Object.keys(draft).length > 0 && (
           <form onSubmit={saveSettings}>

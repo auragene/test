@@ -1,48 +1,107 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../api'
+import { clearDashboardTheme, readDashboardTheme } from '../dashboardTheme'
+import './Orders.css'
 
-const VALID_STATUSES = ['pending', 'accepted', 'preparing', 'ready', 'served']
+const ACTIVE_COLUMNS = [
+  { status: 'pending', label: 'Order Placed', action: 'Accept' },
+  { status: 'accepted', label: 'Accepted', action: 'Start Preparing' },
+  { status: 'preparing', label: 'Preparing', action: 'Ready for Pickup' },
+  { status: 'ready', label: 'Ready for Pickup', action: 'Mark Served' },
+]
+const NEXT_STATUS = {
+  pending: 'accepted',
+  accepted: 'preparing',
+  preparing: 'ready',
+  ready: 'served',
+}
+
+function orderTime(order) {
+  const value = order.created_at || order.order_date || order.timestamp
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString()
+}
+
+function orderTotal(order) {
+  if (order.total !== undefined && order.total !== null) return Number(order.total) || 0
+  return (order.items || []).reduce(
+    (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
+    0,
+  )
+}
 
 const Orders = () => {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
+  const [theme] = useState(readDashboardTheme)
   const [loading, setLoading] = useState(true)
   const [updatingOrderId, setUpdatingOrderId] = useState(null)
-  const [showAllOrders, setShowAllOrders] = useState(false)
+  const [showServed, setShowServed] = useState(false)
   const [message, setMessage] = useState('')
+  const [soundEnabled, setSoundEnabled] = useState(false)
+
+  const loadOrders = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true)
+    try {
+      const response = await fetch(`${API_URL}/get-orders`, { credentials: 'include' })
+      const result = await response.json()
+      if (response.status === 401) {
+        sessionStorage.removeItem('account')
+        clearDashboardTheme()
+        navigate('/login', { replace: true })
+        return
+      }
+      if (!response.ok) throw new Error(result.error || 'Could not load orders.')
+      setOrders(result)
+      setMessage('')
+    } catch (error) {
+      console.error('Error loading orders:', error)
+      setMessage(error.message || 'Could not load orders.')
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }, [navigate])
 
   useEffect(() => {
     let active = true
 
-    async function loadOrders(isInitialLoad = false) {
-      if (isInitialLoad) setLoading(true)
+    async function loadUserAndTheme() {
       try {
-        const response = await fetch(
-          `${API_URL}/get-orders${showAllOrders ? '' : '?active=true'}`,
-          { credentials: 'include' },
-        )
+        if (!theme) {
+          throw new Error('Dashboard colors are missing from this session. Please sign in again.')
+        }
+        const response = await fetch(`${API_URL}/dashboard-user`, { credentials: 'include' })
         const result = await response.json()
-        if (!response.ok) {
-          throw new Error(result.error || 'Could not load orders.')
+        if (response.status === 401) {
+          sessionStorage.removeItem('account')
+          clearDashboardTheme()
+          navigate('/login', { replace: true })
+          return
         }
-        if (active) {
-          setOrders(result)
-          setMessage('')
-        }
+        if (!response.ok) throw new Error(result.error || 'Could not load your account.')
+        if (!active) return
       } catch (error) {
-        console.error('Error loading orders:', error)
-        if (active) setMessage(error.message || 'Could not load orders.')
+        console.error('Could not load Orders page settings:', error)
+        if (active) setMessage(error.message || 'Could not load Orders page settings.')
       } finally {
-        if (active && isInitialLoad) setLoading(false)
+        if (active) setLoading(false)
       }
     }
 
-    loadOrders(true)
-    const refreshInterval = window.setInterval(() => loadOrders(), 5000)
+    loadUserAndTheme()
     return () => {
       active = false
-      window.clearInterval(refreshInterval)
     }
-  }, [showAllOrders])
+  }, [navigate, theme])
+
+  useEffect(() => {
+    if (!theme) return undefined
+    loadOrders(true)
+    const intervalId = window.setInterval(() => loadOrders(), 5000)
+    return () => window.clearInterval(intervalId)
+  }, [loadOrders, theme])
 
   async function updateStatus(orderId, status) {
     setUpdatingOrderId(orderId)
@@ -58,17 +117,17 @@ const Orders = () => {
         },
       )
       const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || 'Could not update order status.')
+      if (response.status === 401) {
+        sessionStorage.removeItem('account')
+        clearDashboardTheme()
+        navigate('/login', { replace: true })
+        return
       }
-
-      setOrders((currentOrders) =>
-        currentOrders.map((order) => (order._id === result._id ? result : order)),
+      if (!response.ok) throw new Error(result.error || 'Could not update order status.')
+      setOrders((current) =>
+        current.map((order) => (order._id === result._id ? result : order)),
       )
-      setMessage(`Order status updated to ${result.status}.`)
-      if (!showAllOrders && ['served', 'completed'].includes(result.status)) {
-        setOrders((currentOrders) => currentOrders.filter((order) => order._id !== result._id))
-      }
+      setMessage(`Order moved to ${result.status}.`)
     } catch (error) {
       console.error('Error updating order status:', error)
       setMessage(error.message || 'Could not update order status.')
@@ -77,56 +136,148 @@ const Orders = () => {
     }
   }
 
+  const visibleOrders = showServed
+    ? orders.filter((order) => ['served', 'completed'].includes(order.status))
+    : orders.filter((order) => !['served', 'completed'].includes(order.status))
+
+  if (loading && !theme) {
+    return <main className="orders-status" role="status">Checking your sign-in and loading orders...</main>
+  }
+  if (!theme) {
+    return (
+      <main className="orders-status" role="alert">
+        <p>{message || 'Could not load the Orders page.'}</p>
+        <button type="button" onClick={() => navigate('/settings')}>Open Settings</button>
+      </main>
+    )
+  }
+
   return (
-    <main>
-      <h1>Orders</h1>
-      <label>
-        <input
-          type="checkbox"
-          checked={showAllOrders}
-          onChange={(event) => setShowAllOrders(event.target.checked)}
-        />
-        Show served and completed orders
-      </label>
-      <p>Orders refresh automatically every 5 seconds.</p>
-
-      {message && <p role="status">{message}</p>}
-      {loading && <p>Loading orders...</p>}
-      {!loading && !message && orders.length === 0 && <p>No orders found.</p>}
-
-      <section aria-label="Orders">
-        {orders.map((order) => (
-          <article key={order._id}>
-            <h2>Order {order.customer_number || order._id}</h2>
-            <p>Table: {order.table_name}</p>
-            <p>Status: {order.status || 'pending'}</p>
-            <ul>
-              {(order.items || []).map((item, index) => (
-                <li key={`${item.product_id || item.name}-${index}`}>
-                  {item.name} × {item.quantity} — ₹{Number(item.price) * Number(item.quantity)}
-                </li>
-              ))}
-            </ul>
-            <p>Total: ₹{order.total}</p>
-            {order.special_instructions && <p>Instructions: {order.special_instructions}</p>}
-            <label>
-              Update status
-              <select
-                value={VALID_STATUSES.includes(order.status) ? order.status : 'pending'}
-                onChange={(event) => updateStatus(order._id, event.target.value)}
-                disabled={updatingOrderId === order._id}
+    <main
+      className="orders-main"
+      style={{
+        '--orders-primary': theme.primary,
+        '--orders-secondary': theme.secondary,
+      }}
+    >
+        <section className="orders-workspace">
+          <div className="orders-toolbar">
+            <div className="orders-tabs" aria-label="Order views">
+              <button
+                className={!showServed ? 'is-selected' : ''}
+                type="button"
+                onClick={() => setShowServed(false)}
               >
-                {VALID_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {updatingOrderId === order._id && <p>Updating status...</p>}
-          </article>
-        ))}
-      </section>
+                Active Orders
+              </button>
+              <button
+                className={showServed ? 'is-selected' : ''}
+                type="button"
+                onClick={() => setShowServed(true)}
+              >
+                Served ({orders.filter((order) => ['served', 'completed'].includes(order.status)).length})
+              </button>
+            </div>
+            <div className="orders-toolbar__actions">
+              <button type="button" onClick={() => setSoundEnabled((enabled) => !enabled)}>
+                <span aria-hidden="true">◖</span> {soundEnabled ? 'Disable Sound' : 'Enable Sound'}
+              </button>
+              <button type="button" onClick={() => loadOrders(true)}>
+                <span aria-hidden="true">⟳</span> Refresh
+              </button>
+            </div>
+          </div>
+
+          {message && <p className="orders-message" role="status">{message}</p>}
+          {loading && <p className="orders-message" role="status">Refreshing orders...</p>}
+
+          {!showServed ? (
+            <section className="orders-board" aria-label="Active orders by status">
+              {ACTIVE_COLUMNS.map((column, index) => {
+                const columnOrders = visibleOrders.filter(
+                  (order) => (order.status || 'pending') === column.status,
+                )
+                return (
+                  <section
+                    className={`orders-column orders-column--${index + 1}`}
+                    key={column.status}
+                    aria-label={`${column.label}: ${columnOrders.length} orders`}
+                  >
+                    <header className="orders-column__heading">
+                      <h2>{column.label}</h2>
+                      <span>{columnOrders.length}</span>
+                    </header>
+                    <div className="orders-column__stack">
+                      {columnOrders.length === 0 ? (
+                        <p className="orders-empty">No orders</p>
+                      ) : columnOrders.map((order) => (
+                        <article className="order-card" key={order._id}>
+                          <header className="order-card__heading">
+                            <div>
+                              <strong>Table {order.table_name || order.table_id || '—'}</strong>
+                              <small>Customer {order.customer_number || '—'}</small>
+                            </div>
+                            <span className="order-card__badge">{column.label}</span>
+                          </header>
+                          {orderTime(order) && <p className="order-card__time">Ordered {orderTime(order)}</p>}
+                          <ul className="order-card__items">
+                            {(order.items || []).map((item, itemIndex) => (
+                              <li key={`${item.product_id || item.name}-${itemIndex}`}>
+                                <span>{item.name} <small>× {item.quantity}</small></span>
+                                <strong>₹{(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}</strong>
+                              </li>
+                            ))}
+                          </ul>
+                          {order.special_instructions && (
+                            <p className="order-card__instructions">{order.special_instructions}</p>
+                          )}
+                          <footer className="order-card__footer">
+                            <span>Total<strong>₹{orderTotal(order).toFixed(2)}</strong></span>
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(order._id, NEXT_STATUS[column.status])}
+                              disabled={updatingOrderId === order._id}
+                            >
+                              {updatingOrderId === order._id ? 'Updating…' : column.action}
+                            </button>
+                          </footer>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )
+              })}
+            </section>
+          ) : (
+            <section className="orders-served" aria-label="Served orders">
+              {visibleOrders.length === 0 ? <p className="orders-empty">No served orders</p> : (
+                visibleOrders.map((order) => (
+                  <article className="order-card order-card--served" key={order._id}>
+                    <header className="order-card__heading">
+                      <div>
+                        <strong>Table {order.table_name || order.table_id || '—'}</strong>
+                        <small>Customer {order.customer_number || '—'}</small>
+                      </div>
+                      <span className="order-card__badge">Served</span>
+                    </header>
+                    {orderTime(order) && <p className="order-card__time">Ordered {orderTime(order)}</p>}
+                    <ul className="order-card__items">
+                      {(order.items || []).map((item, itemIndex) => (
+                        <li key={`${item.product_id || item.name}-${itemIndex}`}>
+                          <span>{item.name} <small>× {item.quantity}</small></span>
+                          <strong>₹{(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <footer className="order-card__footer">
+                      <span>Total<strong>₹{orderTotal(order).toFixed(2)}</strong></span>
+                    </footer>
+                  </article>
+                ))
+              )}
+            </section>
+          )}
+        </section>
     </main>
   )
 }

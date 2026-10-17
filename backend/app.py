@@ -11,6 +11,7 @@ from routes.products_routes import products_bp
 from routes.customer_routes import customer_bp
 from routes.setttings_routes import settings_bp
 from routes.tables_routes import tables_bp
+from routes.admin_routes import admin_bp
 
 app = Flask(__name__)
 frontend_origins = [
@@ -40,6 +41,7 @@ app.register_blueprint(products_bp)
 app.register_blueprint(customer_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(tables_bp)
+app.register_blueprint(admin_bp)
 
 if __name__ == "__main__":
     app.run(debug=True)

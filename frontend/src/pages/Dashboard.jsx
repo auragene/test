@@ -1,58 +1,38 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../api'
+import { clearDashboardTheme, readDashboardTheme } from '../dashboardTheme'
 import './Dashboard.css'
 
 const Dashboard = () => {
   const navigate = useNavigate()
-  const [settings, setSettings] = useState(null)
+  const [theme] = useState(readDashboardTheme)
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const hotelInitial = userName.charAt(0).toUpperCase()
 
   useEffect(() => {
     let active = true
 
     async function loadDashboardSettings() {
       try {
-        const [settingsResponse, userResponse] = await Promise.all([
-          fetch(`${API_URL}/get-settings`, { credentials: 'include' }),
-          fetch(`${API_URL}/dashboard-user`, { credentials: 'include' }),
-        ])
-        const [result, userResult] = await Promise.all([
-          settingsResponse.json(),
-          userResponse.json(),
-        ])
+        const response = await fetch(`${API_URL}/dashboard-user`, {
+          credentials: 'include',
+        })
+        const userResult = await response.json()
 
-        if (settingsResponse.status === 401 || userResponse.status === 401) {
+        if (response.status === 401) {
           sessionStorage.removeItem('account')
+          clearDashboardTheme()
           navigate('/login', { replace: true })
           return
         }
-        if (!settingsResponse.ok) {
-          throw new Error(result.error || 'Could not load dashboard settings.')
-        }
-        if (!userResponse.ok) {
+        if (!response.ok) {
           throw new Error(userResult.error || 'Could not load the signed-in user.')
-        }
-
-        const primaryColor = result.primary_color || result.primaryColor || result.primary
-        const secondaryColor =
-          result.secondary_color || result.secondaryColor || result.secondary
-        if (
-          typeof primaryColor !== 'string' ||
-          !CSS.supports('color', primaryColor) ||
-          typeof secondaryColor !== 'string' ||
-          !CSS.supports('color', secondaryColor)
-        ) {
-          throw new Error('Set valid primary and secondary colors in Settings to use the dashboard.')
         }
 
         if (active) {
           setUserName(userResult.name)
-          setSettings({ ...result, primary_color: primaryColor, secondary_color: secondaryColor })
         }
       } catch (loadError) {
         console.error('Error loading dashboard settings:', loadError)
@@ -68,24 +48,6 @@ const Dashboard = () => {
     }
   }, [navigate])
 
-  async function logout() {
-    try {
-      const response = await fetch(`${API_URL}/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || 'Could not log out.')
-      }
-      sessionStorage.removeItem('account')
-      navigate('/login', { replace: true })
-    } catch (logoutError) {
-      console.error('Error logging out:', logoutError)
-      setError(logoutError.message || 'Could not log out.')
-    }
-  }
-
   if (loading) {
     return <main className="dashboard-status" role="status">Checking your sign-in and loading the dashboard...</main>
   }
@@ -97,80 +59,31 @@ const Dashboard = () => {
       </main>
     )
   }
+  if (!theme) {
+    return (
+      <main className="dashboard-status" role="alert">
+        <p>Dashboard colors are missing from this session. Please sign in again.</p>
+        <button type="button" onClick={() => navigate('/login', { replace: true })}>Go to Login</button>
+      </main>
+    )
+  }
 
   return (
-    <div
-      className="dashboard-shell"
-      style={{
-        '--dashboard-primary': settings.primary_color,
-        '--dashboard-secondary': settings.secondary_color,
-      }}
-    >
-      <aside className="dashboard-sidebar">
-        <a className="dashboard-brand" href="/dashboard">
-          <span className="dashboard-brand__mark">{hotelInitial}</span>
-          <span>
-            <strong>{userName}</strong>
-            <small>HOTEL MANAGEMENT</small>
-          </span>
-        </a>
-
-        <p className="dashboard-sidebar__label">WORKSPACE</p>
-        <nav className="dashboard-nav" aria-label="Main navigation">
-          <a className="dashboard-nav__link dashboard-nav__link--active" href="/dashboard">
-            <span aria-hidden="true">▦</span>
-            Dashboard
-          </a>
-          <a className="dashboard-nav__link" href="/orders">
-            <span aria-hidden="true">▤</span>
-            Orders
-          </a>
-          <a className="dashboard-nav__link" href="/products">
-            <span aria-hidden="true">◈</span>
-            Products
-          </a>
-          <a className="dashboard-nav__link" href="/tables">
-            <span aria-hidden="true">▦</span>
-            Tables
-          </a>
-          <a className="dashboard-nav__link" href="/settings">
-            <span aria-hidden="true">⚙</span>
-            Settings
-          </a>
-        </nav>
-
-        <div className="dashboard-sidebar__footer">
-          <div className="dashboard-user">
-            <span className="dashboard-user__avatar">{hotelInitial}</span>
-            <span>
-              <strong>{userName}</strong>
-              <small>Administrator</small>
-            </span>
-          </div>
-          <button className="dashboard-logout" type="button" onClick={logout}>
-            <span aria-hidden="true">↪</span>
-            Logout
-          </button>
-        </div>
-      </aside>
-
+    <div className="dashboard-shell">
       <main className="dashboard-main">
-        <header className="dashboard-topbar">
-          <div>
-            <p className="dashboard-eyebrow">SATURDAY, OCTOBER 17</p>
-            <p className="dashboard-topbar__hotel">{userName}</p>
-          </div>
-          <button className="dashboard-sound-button" type="button">
-            <span aria-hidden="true">◖</span>
-            Enable Sound
-          </button>
-        </header>
-
-        <section className="dashboard-welcome">
+        <div className="dashboard-content-heading">
           <div>
             <p className="dashboard-eyebrow">YOUR RESTAURANT AT A GLANCE</p>
-            <h1>Good Afternoon, {userName}!</h1>
-            <p>Here&apos;s what&apos;s happening in your dashboard today.</p>
+            <h1>Good afternoon, {userName}</h1>
+            <p>Here&apos;s what&apos;s happening in your workspace today.</p>
+          </div>
+          <span aria-hidden="true">✳</span>
+        </div>
+        <section className="dashboard-welcome">
+          <div>
+            <p className="dashboard-eyebrow">TODAY&apos;S SERVICE</p>
+            <h2>Service at a glance</h2>
+            <p>Your daily overview, order activity and floor status.</p>
           </div>
           <div className="dashboard-welcome__ornament" aria-hidden="true">✳</div>
         </section>

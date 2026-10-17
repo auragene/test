@@ -2,9 +2,11 @@
   --dashboard-ink: #24251f;
   --dashboard-muted: #898b82;
   --dashboard-line: #eeeee8;
-  display: flex;
-  min-height: 100vh;
-  background: #f8f8f5;
+  --dashboard-primary: var(--brand-primary);
+  --dashboard-secondary: var(--brand-secondary);
+  display: block;
+  min-height: 0;
+  background: transparent;
   color: var(--dashboard-ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -150,9 +152,47 @@
 }
 
 .dashboard-main {
-  width: min(1500px, calc(100% - 248px));
-  margin-left: 248px;
-  padding: 0 42px 44px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-content-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 22px;
+}
+
+.dashboard-content-heading .dashboard-eyebrow {
+  color: var(--dashboard-primary);
+}
+
+.dashboard-content-heading h1 {
+  margin: 0;
+  color: var(--dashboard-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(27px, 3vw, 36px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.dashboard-content-heading p:last-child {
+  margin: 7px 0 0;
+  color: var(--dashboard-muted);
+  font-size: 12px;
+}
+
+.dashboard-content-heading > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--brand-secondary) 20%, white);
+  color: var(--brand-primary);
+  font-size: 21px;
 }
 
 .dashboard-topbar {
@@ -183,7 +223,7 @@
   place-content: center;
   gap: 12px;
   padding: 24px;
-  color: #24251f;
+  color: var(--brand-primary);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   text-align: center;
 }
@@ -193,7 +233,7 @@
   padding: 10px 14px;
   border: 0;
   border-radius: 8px;
-  background: var(--dashboard-primary, #24251f);
+  background: var(--brand-primary);
   color: #fff;
   cursor: pointer;
 }
@@ -220,18 +260,18 @@
 .dashboard-welcome {
   position: relative;
   display: flex;
-  min-height: 181px;
+  min-height: 105px;
   align-items: center;
   justify-content: space-between;
   overflow: hidden;
-  margin: 26px 0 23px;
-  padding: 30px 34px;
+  margin: 0 0 19px;
+  padding: 20px 23px;
   border: 1px solid var(--dashboard-line);
   border-radius: 15px;
   background: linear-gradient(
     110deg,
     #fff 0%,
-    color-mix(in srgb, var(--dashboard-secondary) 7%, white) 100%
+    color-mix(in srgb, var(--brand-secondary) 7%, white) 100%
   );
 }
 
@@ -241,6 +281,13 @@
   font-size: clamp(26px, 3vw, 36px);
   font-weight: 500;
   letter-spacing: -0.04em;
+}
+
+.dashboard-welcome h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 500;
 }
 
 .dashboard-welcome > div:first-child > p:last-child {
@@ -488,74 +535,15 @@
     width: 210px;
   }
 
-  .dashboard-main {
-    width: calc(100% - 210px);
-    margin-left: 210px;
-    padding-right: 24px;
-    padding-left: 24px;
-  }
-
   .dashboard-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
-  .dashboard-shell {
-    display: block;
-    padding-bottom: 65px;
-  }
-
-  .dashboard-sidebar {
-    position: fixed;
-    inset: auto 0 0;
-    width: auto;
-    height: 62px;
-    padding: 5px 8px;
-    border-top: 1px solid var(--dashboard-line);
-    border-right: 0;
-  }
-
-  .dashboard-brand,
-  .dashboard-sidebar__label,
-  .dashboard-sidebar__footer {
-    display: none;
-  }
-
-  .dashboard-nav {
-    height: 100%;
-    grid-template-columns: repeat(5, 1fr);
-    align-items: center;
-    gap: 2px;
-  }
-
-  .dashboard-nav__link {
-    min-height: 50px;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    padding: 3px 1px;
-    font-size: 9px;
-  }
-
-  .dashboard-nav__link > span {
-    font-size: 16px;
-  }
-
-  .dashboard-main {
-    width: 100%;
-    margin: 0;
-    padding: 0 15px 24px;
-  }
-
-  .dashboard-topbar {
-    min-height: 67px;
-  }
-
   .dashboard-welcome {
-    min-height: 155px;
-    margin-top: 18px;
-    padding: 22px 19px;
+    min-height: 120px;
+    padding: 18px;
   }
 
   .dashboard-welcome__ornament {
