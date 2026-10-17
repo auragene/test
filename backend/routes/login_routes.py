@@ -11,9 +11,9 @@ from database.db import client
 
 LOGIN_DATABASE_NAME = "aura_grand_hotel"
 
-hotel_staff_bp = Blueprint('hotel_staff', __name__)
+login_bp = Blueprint('login', __name__)
 
-@hotel_staff_bp.route('/login', methods=['POST'])
+@login_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json(silent=True) or {}
 
