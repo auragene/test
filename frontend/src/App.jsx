@@ -6,6 +6,7 @@ import Orders from "./pages/Orders";
 import Products from "./pages/Products";
 import Settings from "./pages/Settings";
 import Tables from "./pages/Tables";
+import Customer from "./pages/Customer";
 function App() {
   return (
     <BrowserRouter>
@@ -16,6 +17,7 @@ function App() {
         <Route path="/products" element={<Products />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/tables" element={<Tables />} />
+        <Route path="/customer/table/:tableId" element={<Customer />} />
       </Routes>
     </BrowserRouter>
   );

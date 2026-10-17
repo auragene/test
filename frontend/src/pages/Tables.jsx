@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { API_URL } from '../api'
+
+const CUSTOMER_APP_URL = import.meta.env.VITE_CUSTOMER_APP_URL || window.location.origin
 
 const Tables = () => {
   const [tables, setTables] = useState([])
@@ -9,6 +12,17 @@ const Tables = () => {
   const [saving, setSaving] = useState(false)
   const [deletingTableId, setDeletingTableId] = useState(null)
   const [message, setMessage] = useState('')
+  const [tenant, setTenant] = useState('')
+
+  useEffect(() => {
+    try {
+      const account = JSON.parse(sessionStorage.getItem('account') || 'null')
+      setTenant(account?.database || account?.database_name || '')
+    } catch (error) {
+      console.error('Could not read the signed-in account:', error)
+      setMessage('Could not read the signed-in account. Please sign in again.')
+    }
+  }, [])
 
   useEffect(() => {
     async function loadTables() {
@@ -142,6 +156,9 @@ const Tables = () => {
       </form>
 
       {message && <p role="status">{message}</p>}
+      {!tenant && !message && (
+        <p role="alert">Restaurant information is unavailable. Please sign in again to generate QR codes.</p>
+      )}
       {loading && <p>Loading tables...</p>}
       {!loading && !message && tables.length === 0 && <p>No tables found.</p>}
 
@@ -149,6 +166,16 @@ const Tables = () => {
         {tables.map((table) => (
           <article key={table._id}>
             <h2>{table.table_name || 'Unnamed table'}</h2>
+            {tenant && (
+              <div>
+                <p>Scan to open this table's menu</p>
+                <QRCodeSVG
+                  value={`${CUSTOMER_APP_URL}/customer/table/${encodeURIComponent(table._id)}?tenant=${encodeURIComponent(tenant)}`}
+                  title={`QR code for ${table.table_name || 'table'}`}
+                  size={180}
+                />
+              </div>
+            )}
             <button
               type="button"
               onClick={() => startEdit(table)}

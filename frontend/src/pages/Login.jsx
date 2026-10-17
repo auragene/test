@@ -38,7 +38,7 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        sessionStorage.setItem('account', JSON.stringify(data.account));
+        sessionStorage.setItem('account', JSON.stringify(data.user));
         alert(data.message || 'Login successful');
         navigate('/dashboard');
       } else {

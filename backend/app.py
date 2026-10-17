@@ -8,6 +8,7 @@ from flask_session import Session
 from routes.login_routes import login_bp
 from routes.orders_routes import orders_bp
 from routes.products_routes import products_bp
+from routes.customer_routes import customer_bp
 from routes.setttings_routes import settings_bp
 from routes.tables_routes import tables_bp
 
@@ -36,6 +37,7 @@ Session(app)
 app.register_blueprint(login_bp)
 app.register_blueprint(orders_bp)
 app.register_blueprint(products_bp)
+app.register_blueprint(customer_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(tables_bp)
 
