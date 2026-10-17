@@ -4,6 +4,10 @@ import { API_URL } from '../api'
 
 const CUSTOMER_APP_URL = import.meta.env.VITE_CUSTOMER_APP_URL || window.location.origin
 
+function getTableCustomerUrl(tableId, tenant) {
+  return `${CUSTOMER_APP_URL}/customer/table/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}`
+}
+
 const Tables = () => {
   const [tables, setTables] = useState([])
   const [tableName, setTableName] = useState('')
@@ -170,10 +174,19 @@ const Tables = () => {
               <div>
                 <p>Scan to open this table's menu</p>
                 <QRCodeSVG
-                  value={`${CUSTOMER_APP_URL}/customer/table/${encodeURIComponent(table._id)}?tenant=${encodeURIComponent(tenant)}`}
+                  value={getTableCustomerUrl(table._id, tenant)}
                   title={`QR code for ${table.table_name || 'table'}`}
                   size={180}
                 />
+                <p>
+                  <a
+                    href={getTableCustomerUrl(table._id, tenant)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {getTableCustomerUrl(table._id, tenant)}
+                  </a>
+                </p>
               </div>
             )}
             <button
