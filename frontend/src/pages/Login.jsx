@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { API_URL } from '../api'
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,8 +25,9 @@ const Login = () => {
     }
 
     try {
-      const response = await fetch('https://test-gcej.onrender.com/login', {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.email,

@@ -1,13 +1,24 @@
+import os
+from datetime import timedelta
+
 from flask import Flask
 from flask_cors import CORS
 from flask_session import Session
-from datetime import timedelta
+
 from routes.login_routes import login_bp
 from routes.orders_routes import orders_bp
 from routes.products_routes import products_bp
 
 app = Flask(__name__)
-CORS(app)
+frontend_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "FRONTEND_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
+CORS(app, origins=frontend_origins, supports_credentials=True)
 
 
 app.config["SECRET_KEY"] = "your-long-random-secret-key"
@@ -16,8 +27,8 @@ app.config["SESSION_PERMANENT"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = True  # HTTPS in production
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
 
 Session(app)
 app.register_blueprint(login_bp)
