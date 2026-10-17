@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { API_URL } from '../api'
 
@@ -21,7 +21,6 @@ const Customer = () => {
   const { tableId } = useParams()
   const [searchParams] = useSearchParams()
   const tenant = searchParams.get('tenant') || ''
-  const storageKey = `customer-order:${tenant}:${tableId}`
 
   const [table, setTable] = useState(null)
   const [settings, setSettings] = useState({})
@@ -33,10 +32,8 @@ const Customer = () => {
   const [loading, setLoading] = useState(true)
   const [placingOrder, setPlacingOrder] = useState(false)
   const [showMenu, setShowMenu] = useState(true)
-  const [storageReady, setStorageReady] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const orderHistoryLoaded = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -45,8 +42,9 @@ const Customer = () => {
     setError('')
     setMessage('')
     setOrders([])
+    setCart({})
+    setSpecialInstructions('')
     setShowMenu(true)
-    orderHistoryLoaded.current = false
 
     if (!tenant) {
       setError('This QR code is missing its restaurant information.')
@@ -56,29 +54,12 @@ const Customer = () => {
       }
     }
 
-    let token
-    let savedCart = {}
     try {
-      token = localStorage.getItem(`${storageKey}:session`)
-      if (!token) {
-        token = createSessionToken()
-        localStorage.setItem(`${storageKey}:session`, token)
-      }
-
-      const storedCart = localStorage.getItem(`${storageKey}:cart`)
-      if (storedCart) {
-        const parsedCart = JSON.parse(storedCart)
-        if (parsedCart && typeof parsedCart === 'object' && !Array.isArray(parsedCart)) {
-          savedCart = parsedCart
-        }
-      }
-
+      const token = createSessionToken()
       setSessionToken(token)
-      setCart(savedCart)
-      setStorageReady(true)
     } catch (storageError) {
-      console.error('Could not restore the customer session:', storageError)
-      setError(storageError.message || 'Could not restore your ordering session.')
+      console.error('Could not create the customer session:', storageError)
+      setError(storageError.message || 'Could not start your ordering session.')
       setLoading(false)
       return () => {
         active = false
@@ -112,7 +93,7 @@ const Customer = () => {
     return () => {
       active = false
     }
-  }, [storageKey, tableId, tenant])
+  }, [tableId, tenant])
 
   useEffect(() => {
     if (!sessionToken || !tenant || !tableId) return
@@ -129,10 +110,6 @@ const Customer = () => {
         }
         if (active) {
           setOrders(result)
-          if (!orderHistoryLoaded.current) {
-            setShowMenu(result.length === 0)
-            orderHistoryLoaded.current = true
-          }
         }
       } catch (statusError) {
         console.error('Could not refresh order statuses:', statusError)
@@ -146,18 +123,7 @@ const Customer = () => {
       active = false
       window.clearInterval(intervalId)
     }
-  }, [sessionToken, tableId, tenant, storageKey])
-
-  useEffect(() => {
-    if (!storageReady) return
-
-    try {
-      localStorage.setItem(`${storageKey}:cart`, JSON.stringify(cart))
-    } catch (storageError) {
-      console.error('Could not save the cart:', storageError)
-      setError('Could not save your cart on this device.')
-    }
-  }, [cart, storageKey, storageReady])
+  }, [sessionToken, tableId, tenant])
 
   const total = useMemo(
     () =>
@@ -216,7 +182,6 @@ const Customer = () => {
       setSpecialInstructions('')
       setOrders((currentOrders) => [result, ...currentOrders])
       setShowMenu(false)
-      orderHistoryLoaded.current = true
       setMessage(`Order placed for ${result.customer_number}.`)
     } catch (orderError) {
       console.error('Could not place customer order:', orderError)

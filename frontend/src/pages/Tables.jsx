@@ -15,6 +15,7 @@ const Tables = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deletingTableId, setDeletingTableId] = useState(null)
+  const [resettingTableId, setResettingTableId] = useState(null)
   const [message, setMessage] = useState('')
   const [tenant, setTenant] = useState('')
 
@@ -135,6 +136,39 @@ const Tables = () => {
     }
   }
 
+  async function resetCustomerNumbering(table) {
+    const displayName = table.table_name || 'this table'
+    if (!window.confirm(`Reset customer numbering for "${displayName}"? The next order will start at 1.`)) {
+      return
+    }
+
+    setResettingTableId(table._id)
+    setMessage('')
+    try {
+      const response = await fetch(
+        `${API_URL}/reset-table-customer-sequence/${encodeURIComponent(table._id)}`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        },
+      )
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Could not reset customer numbering.')
+      }
+
+      setTables((currentTables) =>
+        currentTables.map((item) => (item._id === table._id ? result.table : item)),
+      )
+      setMessage(result.message || 'Customer numbering reset.')
+    } catch (error) {
+      console.error('Error resetting customer numbering:', error)
+      setMessage(error.message || 'Could not reset customer numbering.')
+    } finally {
+      setResettingTableId(null)
+    }
+  }
+
   return (
     <main>
       <h1>Tables</h1>
@@ -170,6 +204,7 @@ const Tables = () => {
         {tables.map((table) => (
           <article key={table._id}>
             <h2>{table.table_name || 'Unnamed table'}</h2>
+            <p>Next customer number: {(table.customer_sequence || 0) + 1}</p>
             {tenant && (
               <div>
                 <p>Scan to open this table's menu</p>
@@ -192,16 +227,23 @@ const Tables = () => {
             <button
               type="button"
               onClick={() => startEdit(table)}
-              disabled={saving || deletingTableId !== null}
+              disabled={saving || deletingTableId !== null || resettingTableId !== null}
             >
               Edit name
             </button>
             <button
               type="button"
               onClick={() => deleteTable(table)}
-              disabled={saving || deletingTableId !== null}
+              disabled={saving || deletingTableId !== null || resettingTableId !== null}
             >
               {deletingTableId === table._id ? 'Deleting...' : 'Delete'}
+            </button>
+            <button
+              type="button"
+              onClick={() => resetCustomerNumbering(table)}
+              disabled={saving || deletingTableId !== null || resettingTableId !== null}
+            >
+              {resettingTableId === table._id ? 'Resetting...' : 'Reset numbering'}
             </button>
           </article>
         ))}

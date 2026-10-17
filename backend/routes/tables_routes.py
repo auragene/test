@@ -84,3 +84,27 @@ def delete_table(table_id):
         return jsonify({"error": "Table not found"}), 404
 
     return jsonify({"message": "Table deleted", "id": table_id}), 200
+
+
+@tables_bp.route('/reset-table-customer-sequence/<table_id>', methods=['POST'])
+def reset_table_customer_sequence(table_id):
+    database_name = session.get("database_name")
+    if not database_name:
+        return jsonify({"error": "Authentication required"}), 401
+
+    if not ObjectId.is_valid(table_id):
+        return jsonify({"error": "Invalid table ID"}), 400
+
+    table = client[database_name]["tables"].find_one_and_update(
+        {"_id": ObjectId(table_id)},
+        {"$set": {"customer_sequence": 0}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if table is None:
+        return jsonify({"error": "Table not found"}), 404
+
+    table["_id"] = str(table["_id"])
+    return jsonify({
+        "message": "Customer numbering reset. The next order will start at 1.",
+        "table": table,
+    }), 200
