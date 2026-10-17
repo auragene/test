@@ -14,6 +14,19 @@ const emptyProduct = {
   available: true,
 }
 
+const productCategories = [
+  'Appetizers',
+  'Soups & Salads',
+  'Main Course',
+  'Breads',
+  'Rice & Noodles',
+  'Pizza & Pasta',
+  'Burgers & Sandwiches',
+  'Desserts',
+  'Beverages',
+  'Other',
+]
+
 const Products = () => {
   const [products, setProducts] = useState([])
   const [product, setProduct] = useState(emptyProduct)
@@ -216,7 +229,15 @@ const Products = () => {
         </label>
         <label>
           Category
-          <input name="category" value={product.category} onChange={updateField} required />
+          <select name="category" value={product.category} onChange={updateField} required>
+            <option value="" disabled>Select a category</option>
+            {product.category && !productCategories.includes(product.category) && (
+              <option value={product.category}>{product.category}</option>
+            )}
+            {productCategories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
         </label>
         <label>
           Price
