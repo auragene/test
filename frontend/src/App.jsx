@@ -4,6 +4,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";  
 import Products from "./pages/Products";
+import Settings from "./pages/Settings";
+import Tables from "./pages/Tables";
 function App() {
   return (
     <BrowserRouter>
@@ -12,6 +14,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/tables" element={<Tables />} />
       </Routes>
     </BrowserRouter>
   );
