@@ -27,7 +27,7 @@ def admin_login():
         return jsonify({"error": "Email and password are required"}), 400
 
     email = email.strip().lower()
-    user = client[ADMIN_DATABASE_NAME]["users"].find_one({"email": email})
+    user = client[ADMIN_DATABASE_NAME]["admin_access"].find_one({"email": email})
     if user is None or not _is_admin(user):
         return jsonify({"error": "Invalid email or password"}), 401
 
