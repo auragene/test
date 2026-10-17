@@ -25,11 +25,13 @@ const Customer = () => {
 
   const [table, setTable] = useState(null)
   const [products, setProducts] = useState([])
+  const [orders, setOrders] = useState([])
   const [cart, setCart] = useState({})
   const [sessionToken, setSessionToken] = useState('')
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [loading, setLoading] = useState(true)
   const [placingOrder, setPlacingOrder] = useState(false)
+  const [showMenu, setShowMenu] = useState(true)
   const [storageReady, setStorageReady] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -70,11 +72,21 @@ const Customer = () => {
           throw new Error(result.error || 'Could not load the menu.')
         }
 
+        const ordersResponse = await fetch(
+          `${API_URL}/customer/orders/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}&session_token=${encodeURIComponent(token)}`,
+        )
+        const ordersResult = await ordersResponse.json()
+        if (!ordersResponse.ok) {
+          throw new Error(ordersResult.error || 'Could not load your order status.')
+        }
+
         if (active) {
           setSessionToken(token)
           setCart(savedCart)
           setTable(result.table)
           setProducts(result.products)
+          setOrders(ordersResult)
+          setShowMenu(ordersResult.length === 0)
           setStorageReady(true)
         }
       } catch (loadError) {
@@ -94,6 +106,33 @@ const Customer = () => {
       active = false
     }
   }, [storageKey, tableId, tenant])
+
+  useEffect(() => {
+    if (!sessionToken || !tenant || !tableId) return
+
+    let active = true
+    async function refreshOrderStatuses() {
+      try {
+        const response = await fetch(
+          `${API_URL}/customer/orders/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}&session_token=${encodeURIComponent(sessionToken)}`,
+        )
+        const result = await response.json()
+        if (!response.ok) {
+          throw new Error(result.error || 'Could not refresh order statuses.')
+        }
+        if (active) setOrders(result)
+      } catch (statusError) {
+        console.error('Could not refresh order statuses:', statusError)
+        if (active) setError(statusError.message || 'Could not refresh order statuses.')
+      }
+    }
+
+    const intervalId = window.setInterval(refreshOrderStatuses, 10000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
+  }, [sessionToken, tableId, tenant])
 
   useEffect(() => {
     if (!storageReady) return
@@ -161,7 +200,9 @@ const Customer = () => {
 
       setCart({})
       setSpecialInstructions('')
-      setMessage(`Order placed for ${result.customer_number}. Total: ₹${result.total}.`)
+      setOrders((currentOrders) => [result, ...currentOrders])
+      setShowMenu(false)
+      setMessage(`Order placed for ${result.customer_number}.`)
     } catch (orderError) {
       console.error('Could not place customer order:', orderError)
       setError(orderError.message || 'Could not place the order.')
@@ -176,64 +217,105 @@ const Customer = () => {
       {loading && <p>Loading menu...</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      {!loading && !error && products.length === 0 && <p>No available products right now.</p>}
 
-      <section aria-label="Available products">
-        {products.map((product) => (
-          <article key={product._id}>
-            {product.image_url && <img src={product.image_url} alt={product.name} />}
-            <h2>{product.name}</h2>
-            <p>{product.description}</p>
-            <p>₹{product.price}</p>
-            <div>
-              <button
-                type="button"
-                onClick={() => changeQuantity(product._id, -1)}
-                disabled={!cart[product._id]}
-                aria-label={`Remove one ${product.name}`}
-              >
-                -
-              </button>
-              <span aria-live="polite">{cart[product._id] || 0}</span>
-              <button
-                type="button"
-                onClick={() => changeQuantity(product._id, 1)}
-                aria-label={`Add one ${product.name}`}
-              >
-                +
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section aria-label="Your order">
-        <h2>Your order</h2>
-        {products
-          .filter((product) => cart[product._id] > 0)
-          .map((product) => (
-            <p key={product._id}>
-              {product.name} × {cart[product._id]} — ₹
-              {Number(product.price) * cart[product._id]}
-            </p>
+      {orders.length > 0 && (
+        <section aria-label="Your orders">
+          <h2>Order status</h2>
+          <p>Status refreshes automatically every 10 seconds.</p>
+          {orders.map((order) => (
+            <article key={order._id}>
+              <h3>{order.customer_number}</h3>
+              <p>
+                Status: <strong>{order.status || 'pending'}</strong>
+              </p>
+              <ul>
+                {(order.items || []).map((item, index) => (
+                  <li key={`${item.product_id}-${index}`}>
+                    {item.name} × {item.quantity}
+                  </li>
+                ))}
+              </ul>
+              <p>Total: ₹{order.total}</p>
+            </article>
           ))}
-        <p>Total: ₹{total}</p>
-        <label>
-          Special instructions
-          <textarea
-            value={specialInstructions}
-            onChange={(event) => setSpecialInstructions(event.target.value)}
-            maxLength={500}
-          />
-        </label>
+        </section>
+      )}
+
+      {!showMenu && orders.length > 0 && (
         <button
           type="button"
-          onClick={placeOrder}
-          disabled={loading || placingOrder || !sessionToken || total <= 0}
+          onClick={() => {
+            setError('')
+            setMessage('')
+            setShowMenu(true)
+          }}
         >
-          {placingOrder ? 'Placing order...' : 'Place order'}
+          Order more items
         </button>
-      </section>
+      )}
+
+      {showMenu && (
+        <>
+          <section aria-label="Available products">
+            <h2>{orders.length > 0 ? 'Select more items' : 'Menu'}</h2>
+            {!loading && !error && products.length === 0 && <p>No available products right now.</p>}
+            {products.map((product) => (
+              <article key={product._id}>
+                {product.image_url && <img src={product.image_url} alt={product.name} />}
+                <h3>{product.name}</h3>
+                <p>{product.description}</p>
+                <p>₹{product.price}</p>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => changeQuantity(product._id, -1)}
+                    disabled={!cart[product._id]}
+                    aria-label={`Remove one ${product.name}`}
+                  >
+                    -
+                  </button>
+                  <span aria-live="polite">{cart[product._id] || 0}</span>
+                  <button
+                    type="button"
+                    onClick={() => changeQuantity(product._id, 1)}
+                    aria-label={`Add one ${product.name}`}
+                  >
+                    +
+                  </button>
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <section aria-label="Your order">
+            <h2>Your order</h2>
+            {products
+              .filter((product) => cart[product._id] > 0)
+              .map((product) => (
+                <p key={product._id}>
+                  {product.name} × {cart[product._id]} — ₹
+                  {Number(product.price) * cart[product._id]}
+                </p>
+              ))}
+            <p>Total: ₹{total}</p>
+            <label>
+              Special instructions
+              <textarea
+                value={specialInstructions}
+                onChange={(event) => setSpecialInstructions(event.target.value)}
+                maxLength={500}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={placeOrder}
+              disabled={loading || placingOrder || !sessionToken || total <= 0}
+            >
+              {placingOrder ? 'Placing order...' : 'Place order'}
+            </button>
+          </section>
+        </>
+      )}
     </main>
   )
 }

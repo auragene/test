@@ -53,6 +53,31 @@ def get_customer_menu(table_id):
     }), 200
 
 
+@customer_bp.route("/customer/orders/<table_id>", methods=["GET"])
+def get_customer_orders(table_id):
+    _, database, error = _get_tenant_database()
+    if error:
+        return error
+
+    table = _find_table(database, table_id)
+    if table is None:
+        return jsonify({"error": "Table not found"}), 404
+
+    try:
+        session_token = str(uuid.UUID(request.args.get("session_token", "")))
+    except (ValueError, TypeError, AttributeError):
+        return jsonify({"error": "A valid session token is required"}), 400
+
+    orders = list(database["orders"].find({
+        "table_name": str(table["_id"]),
+        "session_token": session_token,
+    }).sort("created_at", -1))
+    for order in orders:
+        order["_id"] = str(order["_id"])
+
+    return jsonify(orders), 200
+
+
 @customer_bp.route("/customer/orders/<table_id>", methods=["POST"])
 def create_customer_order(table_id):
     _, database, error = _get_tenant_database()
