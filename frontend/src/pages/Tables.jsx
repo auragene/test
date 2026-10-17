@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { API_URL } from '../api'
 
-const CUSTOMER_APP_URL = import.meta.env.VITE_CUSTOMER_APP_URL || window.location.origin
+const CUSTOMER_APP_URL = (
+  import.meta.env.VITE_CUSTOMER_APP_URL || 'https://auragrand.vercel.app'
+).replace(/\/+$/, '')
 
 function getTableCustomerUrl(tableId, tenant) {
   return `${CUSTOMER_APP_URL}/customer/table/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}`
