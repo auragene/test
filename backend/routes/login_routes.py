@@ -41,6 +41,7 @@ def login():
     session.clear()
     session["user_id"] = str(user.get("_id"))
     session["database_name"] = database_name
+    session["email"] = email
 
     user_data = {
         "_id": str(user.get("_id")),
@@ -53,6 +54,23 @@ def login():
         "message": "Login successful",
         "user": user_data
     }), 200
+
+
+@login_bp.route('/dashboard-user', methods=['GET'])
+def dashboard_user():
+    database_name = session.get("database_name")
+    email = session.get("email")
+    if not session.get("user_id") or not database_name or not email:
+        return jsonify({"error": "Authentication required"}), 401
+
+    user = client[database_name]["users"].find_one(
+        {"email": email},
+        {"_id": 0, "name": 1},
+    )
+    if not user or not isinstance(user.get("name"), str) or not user["name"].strip():
+        return jsonify({"error": "The signed-in user was not found in this database"}), 404
+
+    return jsonify({"name": user["name"].strip()}), 200
 
 
 @login_bp.route('/logout', methods=['POST'])

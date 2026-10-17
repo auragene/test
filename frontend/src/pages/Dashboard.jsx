@@ -6,37 +6,36 @@ import './Dashboard.css'
 const Dashboard = () => {
   const navigate = useNavigate()
   const [settings, setSettings] = useState(null)
+  const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  let account = {}
-  try {
-    account = JSON.parse(sessionStorage.getItem('account') || '{}')
-  } catch (error) {
-    console.error('Could not read the signed-in account:', error)
-  }
-  const hotelName =
-    settings?.hotel_name || settings?.restaurant_name || settings?.display_name ||
-    account.hotel_name || account.hotelName || account.name || account.database || 'Your Hotel'
-  const hotelInitial = hotelName.charAt(0).toUpperCase()
+  const hotelInitial = userName.charAt(0).toUpperCase()
 
   useEffect(() => {
     let active = true
 
     async function loadDashboardSettings() {
       try {
-        const response = await fetch(`${API_URL}/get-settings`, {
-          credentials: 'include',
-        })
-        const result = await response.json()
+        const [settingsResponse, userResponse] = await Promise.all([
+          fetch(`${API_URL}/get-settings`, { credentials: 'include' }),
+          fetch(`${API_URL}/dashboard-user`, { credentials: 'include' }),
+        ])
+        const [result, userResult] = await Promise.all([
+          settingsResponse.json(),
+          userResponse.json(),
+        ])
 
-        if (response.status === 401) {
+        if (settingsResponse.status === 401 || userResponse.status === 401) {
           sessionStorage.removeItem('account')
           navigate('/login', { replace: true })
           return
         }
-        if (!response.ok) {
+        if (!settingsResponse.ok) {
           throw new Error(result.error || 'Could not load dashboard settings.')
+        }
+        if (!userResponse.ok) {
+          throw new Error(userResult.error || 'Could not load the signed-in user.')
         }
 
         const primaryColor = result.primary_color || result.primaryColor || result.primary
@@ -52,6 +51,7 @@ const Dashboard = () => {
         }
 
         if (active) {
+          setUserName(userResult.name)
           setSettings({ ...result, primary_color: primaryColor, secondary_color: secondaryColor })
         }
       } catch (loadError) {
@@ -110,7 +110,7 @@ const Dashboard = () => {
         <a className="dashboard-brand" href="/dashboard">
           <span className="dashboard-brand__mark">{hotelInitial}</span>
           <span>
-            <strong>{hotelName}</strong>
+            <strong>{userName}</strong>
             <small>HOTEL MANAGEMENT</small>
           </span>
         </a>
@@ -143,7 +143,7 @@ const Dashboard = () => {
           <div className="dashboard-user">
             <span className="dashboard-user__avatar">{hotelInitial}</span>
             <span>
-              <strong>{hotelName}</strong>
+              <strong>{userName}</strong>
               <small>Administrator</small>
             </span>
           </div>
@@ -158,7 +158,7 @@ const Dashboard = () => {
         <header className="dashboard-topbar">
           <div>
             <p className="dashboard-eyebrow">SATURDAY, OCTOBER 17</p>
-            <p className="dashboard-topbar__hotel">{hotelName}</p>
+            <p className="dashboard-topbar__hotel">{userName}</p>
           </div>
           <button className="dashboard-sound-button" type="button">
             <span aria-hidden="true">◖</span>
@@ -169,8 +169,8 @@ const Dashboard = () => {
         <section className="dashboard-welcome">
           <div>
             <p className="dashboard-eyebrow">YOUR RESTAURANT AT A GLANCE</p>
-            <h1>Good Afternoon, {hotelName}!</h1>
-            <p>Here&apos;s what&apos;s happening at {hotelName} today.</p>
+            <h1>Good Afternoon, {userName}!</h1>
+            <p>Here&apos;s what&apos;s happening in your dashboard today.</p>
           </div>
           <div className="dashboard-welcome__ornament" aria-hidden="true">✳</div>
         </section>
