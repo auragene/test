@@ -13,6 +13,7 @@ const Admin = () => {
   const [staff, setStaff] = useState([])
   const [staffLoading, setStaffLoading] = useState(false)
   const [staffError, setStaffError] = useState('')
+  const [staffUpdatingId, setStaffUpdatingId] = useState(null)
 
   useEffect(() => {
     if (!admin) return undefined
@@ -43,6 +44,40 @@ const Admin = () => {
     loadStaff()
     return () => controller.abort()
   }, [admin])
+
+  async function updateStaffAccess(member, enabled) {
+    const previousEnabled = member.enabled
+    setStaffError('')
+    setStaffUpdatingId(member.id)
+    setStaff((currentStaff) => currentStaff.map((staffMember) => (
+      staffMember.id === member.id ? { ...staffMember, enabled } : staffMember
+    )))
+
+    try {
+      const response = await fetch(
+        `${API_URL}/admin/hotel-staff/${encodeURIComponent(member.id)}/access`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
+        },
+      )
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not update staff access.')
+      if (result.enabled !== enabled) throw new Error('The staff access update was not confirmed.')
+    } catch (updateError) {
+      console.error('Could not update staff access:', updateError)
+      setStaff((currentStaff) => currentStaff.map((staffMember) => (
+        staffMember.id === member.id
+          ? { ...staffMember, enabled: previousEnabled }
+          : staffMember
+      )))
+      setStaffError(updateError.message || 'Could not update staff access.')
+    } finally {
+      setStaffUpdatingId(null)
+    }
+  }
 
   async function signIn(event) {
     event.preventDefault()
@@ -141,37 +176,31 @@ const Admin = () => {
                       <small style={styles.staffEmail}>{member.email || 'No email listed'}</small>
                       <small style={styles.staffDatabase}>{member.database_name || 'No workspace assigned'}</small>
                     </span>
-                    <span style={styles.staffRole}>{member.role || 'Staff'}</span>
+                    <span style={styles.staffMeta}>
+                      <span style={styles.staffRole}>{member.role || 'Staff'}</span>
+                      <label style={styles.staffAccess}>
+                        <input
+                          type="checkbox"
+                          checked={member.enabled}
+                          disabled={staffUpdatingId !== null}
+                          onChange={(event) => updateStaffAccess(member, event.target.checked)}
+                          style={styles.staffCheckbox}
+                        />
+                        <span>
+                          {staffUpdatingId === member.id
+                            ? 'Saving…'
+                            : 'Allow this staff account to log in'}
+                        </span>
+                      </label>
+                    </span>
                   </article>
                 ))}
               </div>
             )}
           </section>
-          <div style={styles.sectionHeading}>
-            <div>
-              <p style={styles.eyebrow}>QUICK ACCESS</p>
-              <h2 style={styles.sectionTitle}>Restaurant workspace</h2>
-            </div>
-            <span style={styles.signedIn}><i /> Admin signed in</span>
-          </div>
-          <nav style={styles.grid} aria-label="Restaurant admin navigation">
-            {[
-              { to: '/dashboard', icon: '▦', title: 'Overview', text: 'See your restaurant workspace.' },
-              { to: '/orders', icon: '▤', title: 'Orders', text: 'Review and move orders through service.' },
-              { to: '/products', icon: '◈', title: 'Menu & products', text: 'Manage items available to guests.' },
-              { to: '/tables', icon: '▧', title: 'Tables & QR codes', text: 'Manage dining tables and QR links.' },
-              { to: '/settings', icon: '⚙', title: 'Settings', text: 'Update restaurant preferences and colors.' },
-            ].map((item) => (
-              <Link key={item.to} to={item.to} style={styles.linkCard}>
-                <span style={styles.linkIcon} aria-hidden="true">{item.icon}</span>
-                <span>
-                  <strong style={styles.linkTitle}>{item.title}</strong>
-                  <small style={styles.linkText}>{item.text}</small>
-                </span>
-                <span style={styles.arrow} aria-hidden="true">↗</span>
-              </Link>
-            ))}
-          </nav>
+          
+            
+        
         </section>
       ) : (
         <section style={styles.card}>
@@ -338,13 +367,36 @@ const styles = {
     whiteSpace: 'nowrap',
   },
   staffRole: {
-    marginLeft: 'auto',
+    alignSelf: 'flex-end',
     padding: '5px 8px',
     borderRadius: 20,
     background: 'color-mix(in srgb, var(--brand-secondary, #697b57) 12%, white)',
     color: 'var(--brand-secondary, #697b57)',
     fontSize: 9,
     fontWeight: 650,
+  },
+  staffMeta: {
+    display: 'grid',
+    flex: '0 0 auto',
+    justifyItems: 'end',
+    gap: 9,
+    marginLeft: 'auto',
+  },
+  staffAccess: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    color: '#53635b',
+    cursor: 'pointer',
+    fontSize: 9,
+    whiteSpace: 'nowrap',
+  },
+  staffCheckbox: {
+    width: 15,
+    height: 15,
+    margin: 0,
+    accentColor: 'var(--brand-primary, #3c6047)',
+    cursor: 'pointer',
   },
   sectionTitle: {
     margin: '5px 0 0',

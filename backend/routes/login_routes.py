@@ -28,6 +28,9 @@ def login():
     if not user:
         return jsonify({"error": "Invalid email or password"}), 401
 
+    if user.get("enabled") is False:
+        return jsonify({"error": "This staff account is disabled. Contact your administrator."}), 403
+
     stored_hash = user.get("password_hash") or user.get("password")
     if not stored_hash or not check_password_hash(stored_hash, password):
         return jsonify({"error": "Invalid email or password"}), 401

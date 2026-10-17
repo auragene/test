@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
+import './PackagePlan.css';
 
 const PLANS = [
   { code: '1_month', duration: '1 month', price: 2000, label: 'Monthly' },
@@ -97,9 +98,9 @@ export default function PackagePlanPage() {
     <main className="plans-page">
       <header className="plans-header">
         <Link className="plans-back-link" to="/login">
-          <ArrowLeft size={17} /> Back to login
+        <PlanIcon name="arrow-left" /> Back to login
         </Link>
-        <span className="plans-brand"><Crown size={18} /> Aura Grand Hotel</span>
+        <span className="plans-brand"><PlanIcon name="crown" /> Aura Grand Hotel</span>
       </header>
 
       <section className="plans-content">
@@ -125,7 +126,7 @@ export default function PackagePlanPage() {
               <p className="plan-period">for {plan.duration}</p>
               <div className="plan-divider" />
               <p className="plan-includes">
-                <Check size={17} /> Hotel dashboard access
+                <PlanIcon name="check" /> Hotel dashboard access
               </p>
               <button
                 type="button"
@@ -208,6 +209,38 @@ export default function PackagePlanPage() {
       )}
     </main>
   );
+}
+
+function PlanIcon({ name }) {
+  const paths = {
+    'arrow-left': 'M19 12H5m7 7-7-7 7-7',
+    crown: 'm2 8 5 4 5-8 5 8 5-4-2 12H4L2 8Z',
+    check: 'm5 12 4 4L19 6',
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
+function createPlanPaymentOrder() {
+  return Promise.reject(new Error('Plan payment setup is not available right now.'));
+}
+
+function verifyPlanPayment() {
+  return Promise.reject(new Error('Plan payment verification is not available right now.'));
 }
 
 function loadRazorpayCheckout() {
