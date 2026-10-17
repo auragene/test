@@ -1,11 +1,7 @@
 import os
 import sys
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,session
 from werkzeug.security import check_password_hash
-
-backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if backend_root not in sys.path:
-    sys.path.insert(0, backend_root)
 
 from database.db import client
 
@@ -27,8 +23,7 @@ def login():
         return jsonify({"error": "Email and password are required"}), 400
 
     email = email.strip().lower()
-    database_name = LOGIN_DATABASE_NAME
-    hotel_staffs_collection = client[database_name]["hotel_staff"]
+    hotel_staffs_collection = client[LOGIN_DATABASE_NAME]["hotel_staff"]
     user = hotel_staffs_collection.find_one({"email": email})
     if not user:
         return jsonify({"error": "Invalid email or password"}), 401
@@ -42,21 +37,19 @@ def login():
         return jsonify({"error": "Database is not configured for this account"}), 500
 
     database_name = configured_database_name.strip()
+
+    session.clear()
+    session["user_id"] = str(user.get("_id"))
+    session["database_name"] = database_name
+
     user_data = {
         "_id": str(user.get("_id")),
         "email": user.get("email"),
         "name": user.get("name"),
-        "role": user.get("role", "staff")
-    }
-
-    account_info = {
-        "database": database_name,
-        "collection": hotel_staffs_collection.name,
-        "role": user_data["role"]
+        "database": database_name
     }
 
     return jsonify({
         "message": "Login successful",
-        "user": user_data,
-        "account": account_info
+        "user": user_data
     }), 200
