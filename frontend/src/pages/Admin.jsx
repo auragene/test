@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../api'
+
+const EMPTY_STAFF_FORM = {
+  name: '',
+  phone: '',
+  email: '',
+  hotel_name: '',
+  database_name: '',
+  password: '',
+  status: true,
+}
 
 const Admin = () => {
   const navigate = useNavigate()
@@ -14,6 +24,10 @@ const Admin = () => {
   const [staffLoading, setStaffLoading] = useState(false)
   const [staffError, setStaffError] = useState('')
   const [staffUpdatingId, setStaffUpdatingId] = useState(null)
+  const [showCreateStaff, setShowCreateStaff] = useState(false)
+  const [newStaff, setNewStaff] = useState(EMPTY_STAFF_FORM)
+  const [creatingStaff, setCreatingStaff] = useState(false)
+  const [createStaffError, setCreateStaffError] = useState('')
 
   useEffect(() => {
     if (!admin) return undefined
@@ -45,12 +59,12 @@ const Admin = () => {
     return () => controller.abort()
   }, [admin])
 
-  async function updateStaffAccess(member, enabled) {
-    const previousEnabled = member.enabled
+  async function updateStaffAccess(member, status) {
+    const previousStatus = member.status
     setStaffError('')
     setStaffUpdatingId(member.id)
     setStaff((currentStaff) => currentStaff.map((staffMember) => (
-      staffMember.id === member.id ? { ...staffMember, enabled } : staffMember
+      staffMember.id === member.id ? { ...staffMember, status } : staffMember
     )))
 
     try {
@@ -60,22 +74,51 @@ const Admin = () => {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled }),
+          body: JSON.stringify({ status }),
         },
       )
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Could not update staff access.')
-      if (result.enabled !== enabled) throw new Error('The staff access update was not confirmed.')
+      if (result.status !== status) throw new Error('The staff access update was not confirmed.')
     } catch (updateError) {
       console.error('Could not update staff access:', updateError)
       setStaff((currentStaff) => currentStaff.map((staffMember) => (
         staffMember.id === member.id
-          ? { ...staffMember, enabled: previousEnabled }
+          ? { ...staffMember, status: previousStatus }
           : staffMember
       )))
       setStaffError(updateError.message || 'Could not update staff access.')
     } finally {
       setStaffUpdatingId(null)
+    }
+  }
+
+  async function createStaff(event) {
+    event.preventDefault()
+    setCreatingStaff(true)
+    setCreateStaffError('')
+
+    try {
+      const response = await fetch(`${API_URL}/admin/hotel-staff`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newStaff),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not create hotel staff account.')
+      if (!result.staff?.id) throw new Error('The new staff account response was invalid.')
+
+      setStaff((currentStaff) => (
+        [...currentStaff, result.staff].sort((first, second) => first.name.localeCompare(second.name))
+      ))
+      setNewStaff(EMPTY_STAFF_FORM)
+      setShowCreateStaff(false)
+    } catch (createError) {
+      console.error('Could not create hotel staff account:', createError)
+      setCreateStaffError(createError.message || 'Could not create hotel staff account.')
+    } finally {
+      setCreatingStaff(false)
     }
   }
 
@@ -154,9 +197,21 @@ const Admin = () => {
                 <p style={styles.eyebrow}>TEAM DIRECTORY</p>
                 <h2 id="staff-heading" style={styles.sectionTitle}>Hotel staff</h2>
               </div>
-              {!staffLoading && !staffError && (
-                <span style={styles.staffCount}>{staff.length} {staff.length === 1 ? 'account' : 'accounts'}</span>
-              )}
+              <div style={styles.staffActions}>
+                {!staffLoading && !staffError && (
+                  <span style={styles.staffCount}>{staff.length} {staff.length === 1 ? 'account' : 'accounts'}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateStaffError('')
+                    setShowCreateStaff(true)
+                  }}
+                  style={styles.addStaffButton}
+                >
+                  <span aria-hidden="true">＋</span> Add hotel staff
+                </button>
+              </div>
             </div>
             {staffLoading ? (
               <p style={styles.staffMessage}>Loading hotel staff…</p>
@@ -174,14 +229,17 @@ const Admin = () => {
                     <span style={styles.staffDetails}>
                       <strong style={styles.staffName}>{member.name || 'Unnamed staff'}</strong>
                       <small style={styles.staffEmail}>{member.email || 'No email listed'}</small>
-                      <small style={styles.staffDatabase}>{member.database_name || 'No workspace assigned'}</small>
+                      <small style={styles.staffDatabase}>{member.phone || 'No phone listed'}</small>
+                      <small style={styles.staffDatabase}>
+                        {member.hotel_name || 'Hotel'} · {member.database_name || 'No workspace assigned'}
+                      </small>
                     </span>
                     <span style={styles.staffMeta}>
                       <span style={styles.staffRole}>{member.role || 'Staff'}</span>
                       <label style={styles.staffAccess}>
                         <input
                           type="checkbox"
-                          checked={member.enabled}
+                          checked={member.status}
                           disabled={staffUpdatingId !== null}
                           onChange={(event) => updateStaffAccess(member, event.target.checked)}
                           style={styles.staffCheckbox}
@@ -198,9 +256,122 @@ const Admin = () => {
               </div>
             )}
           </section>
-          
-            
-        
+          {showCreateStaff && (
+            <div style={styles.modalBackdrop}>
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="create-staff-title"
+                style={styles.staffModal}
+              >
+                <button
+                  type="button"
+                  aria-label="Close"
+                  disabled={creatingStaff}
+                  onClick={() => setShowCreateStaff(false)}
+                  style={styles.modalClose}
+                >
+                  ×
+                </button>
+                <h2 id="create-staff-title" style={styles.modalTitle}>Add hotel staff</h2>
+                <p style={styles.modalDescription}>
+                  Creates a separate database with the same empty collection and index structure as Irani Restaurant.
+                </p>
+                <form onSubmit={createStaff} style={styles.staffForm}>
+                  <label style={styles.formField}>
+                    <span>Staff name</span>
+                    <input
+                      autoComplete="name"
+                      required
+                      value={newStaff.name}
+                      onChange={(event) => setNewStaff({ ...newStaff, name: event.target.value })}
+                      style={styles.formFieldInput}
+                    />
+                  </label>
+                  <label style={styles.formField}>
+                    <span>Phone number</span>
+                    <input
+                      type="tel"
+                      autoComplete="tel"
+                      required
+                      value={newStaff.phone}
+                      onChange={(event) => setNewStaff({ ...newStaff, phone: event.target.value })}
+                      style={styles.formFieldInput}
+                    />
+                  </label>
+                  <label style={styles.formField}>
+                    <span>Login email</span>
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={newStaff.email}
+                      onChange={(event) => setNewStaff({ ...newStaff, email: event.target.value })}
+                      style={styles.formFieldInput}
+                    />
+                  </label>
+                  <label style={styles.formField}>
+                    <span>Hotel name</span>
+                    <input
+                      required
+                      value={newStaff.hotel_name}
+                      onChange={(event) => setNewStaff({ ...newStaff, hotel_name: event.target.value })}
+                      style={styles.formFieldInput}
+                    />
+                  </label>
+                  <label style={styles.formField}>
+                    <span>Allotted database name</span>
+                    <input
+                      required
+                      pattern="[a-z][a-z0-9_]{0,62}"
+                      title="Use lowercase letters, numbers, and underscores; start with a letter."
+                      value={newStaff.database_name}
+                      onChange={(event) => setNewStaff({
+                        ...newStaff,
+                        database_name: event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+                      })}
+                      style={styles.formFieldInput}
+                    />
+                    <small>Use a unique name such as irani_restaurant.</small>
+                  </label>
+                  <label style={styles.formField}>
+                    <span>Default password</span>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                      value={newStaff.password}
+                      onChange={(event) => setNewStaff({ ...newStaff, password: event.target.value })}
+                      style={styles.formFieldInput}
+                    />
+                  </label>
+                  <label style={styles.createStatus}>
+                    <input
+                      type="checkbox"
+                      checked={newStaff.status}
+                      onChange={(event) => setNewStaff({ ...newStaff, status: event.target.checked })}
+                    />
+                    Allow this staff account to log in
+                  </label>
+                  {createStaffError && <p role="alert" style={styles.error}>{createStaffError}</p>}
+                  <div style={styles.modalActions}>
+                    <button
+                      type="button"
+                      disabled={creatingStaff}
+                      onClick={() => setShowCreateStaff(false)}
+                      style={styles.cancelButton}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={creatingStaff} style={styles.createButton}>
+                      {creatingStaff ? 'Creating…' : 'Create account'}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          )}
         </section>
       ) : (
         <section style={styles.card}>
@@ -307,6 +478,136 @@ const styles = {
   staffCount: {
     color: '#78868a',
     fontSize: 11,
+  },
+  staffActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  addStaffButton: {
+    display: 'inline-flex',
+    minHeight: 36,
+    alignItems: 'center',
+    gap: 6,
+    padding: '0 12px',
+    border: 0,
+    borderRadius: 9,
+    background: 'var(--brand-primary, #3c6047)',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: 11,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+  },
+  modalBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 20,
+    display: 'grid',
+    overflowY: 'auto',
+    placeItems: 'center',
+    padding: 18,
+    background: 'rgb(23 34 29 / 48%)',
+    backdropFilter: 'blur(4px)',
+  },
+  staffModal: {
+    position: 'relative',
+    width: 'min(100%, 640px)',
+    maxHeight: 'min(90vh, 760px)',
+    overflowY: 'auto',
+    padding: '25px 26px 22px',
+    border: '1px solid #e5ebe8',
+    borderRadius: 15,
+    background: '#fff',
+    boxShadow: '0 24px 70px rgb(0 0 0 / 18%)',
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 11,
+    right: 12,
+    width: 32,
+    height: 32,
+    border: 0,
+    background: 'transparent',
+    color: '#78868a',
+    cursor: 'pointer',
+    fontSize: 23,
+  },
+  modalTitle: {
+    margin: 0,
+    color: '#263238',
+    fontFamily: 'Georgia, serif',
+    fontSize: 22,
+    fontWeight: 500,
+  },
+  modalDescription: {
+    margin: '6px 28px 20px 0',
+    color: '#78868a',
+    fontSize: 11,
+    lineHeight: 1.5,
+  },
+  staffForm: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '12px 14px',
+  },
+  formField: {
+    display: 'grid',
+    alignContent: 'start',
+    gap: 6,
+    color: '#53635b',
+    fontSize: 10,
+    fontWeight: 650,
+  },
+  formFieldInput: {
+    height: 41,
+    minWidth: 0,
+    padding: '0 10px',
+    border: '1px solid #dfe6e6',
+    borderRadius: 8,
+    outlineColor: 'var(--brand-primary, #3c6047)',
+    background: '#fff',
+    color: '#263238',
+    fontSize: 12,
+    fontWeight: 400,
+  },
+  createStatus: {
+    display: 'inline-flex',
+    gridColumn: '1 / -1',
+    alignItems: 'center',
+    gap: 7,
+    color: '#53635b',
+    cursor: 'pointer',
+    fontSize: 11,
+  },
+  modalActions: {
+    display: 'flex',
+    gridColumn: '1 / -1',
+    justifyContent: 'flex-end',
+    gap: 9,
+    marginTop: 5,
+  },
+  cancelButton: {
+    minHeight: 38,
+    padding: '0 13px',
+    border: '1px solid #e2e9e6',
+    borderRadius: 8,
+    background: '#fff',
+    color: '#53635b',
+    cursor: 'pointer',
+    fontSize: 11,
+    fontWeight: 650,
+  },
+  createButton: {
+    minHeight: 38,
+    padding: '0 15px',
+    border: 0,
+    borderRadius: 8,
+    background: 'var(--brand-primary, #3c6047)',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: 11,
+    fontWeight: 700,
   },
   staffMessage: {
     margin: '12px 0 2px',
