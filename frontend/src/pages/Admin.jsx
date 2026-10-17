@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { API_URL } from '../api'
 
@@ -10,6 +10,39 @@ const Admin = () => {
   const [error, setError] = useState('')
   const [admin, setAdmin] = useState(null)
   const [signingOut, setSigningOut] = useState(false)
+  const [staff, setStaff] = useState([])
+  const [staffLoading, setStaffLoading] = useState(false)
+  const [staffError, setStaffError] = useState('')
+
+  useEffect(() => {
+    if (!admin) return undefined
+
+    const controller = new AbortController()
+    async function loadStaff() {
+      setStaffLoading(true)
+      setStaffError('')
+
+      try {
+        const response = await fetch(`${API_URL}/admin/hotel-staff`, {
+          credentials: 'include',
+          signal: controller.signal,
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Could not load hotel staff.')
+        if (!Array.isArray(result.staff)) throw new Error('The staff list response was invalid.')
+        setStaff(result.staff)
+      } catch (loadError) {
+        if (loadError.name === 'AbortError') return
+        console.error('Could not load hotel staff:', loadError)
+        setStaffError(loadError.message || 'Could not load hotel staff.')
+      } finally {
+        if (!controller.signal.aborted) setStaffLoading(false)
+      }
+    }
+
+    loadStaff()
+    return () => controller.abort()
+  }, [admin])
 
   async function signIn(event) {
     event.preventDefault()
@@ -25,6 +58,7 @@ const Admin = () => {
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Sign-in failed.')
+      window.alert('Login successful!')
       setAdmin(result.user)
       setPassword('')
     } catch (signInError) {
@@ -46,6 +80,7 @@ const Admin = () => {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Could not sign out.')
       setAdmin(null)
+      setStaff([])
       setEmail('')
       navigate('/admin', { replace: true })
     } catch (signOutError) {
@@ -78,6 +113,40 @@ const Admin = () => {
             </button>
           </header>
           {error && <p role="alert" style={styles.error}>{error}</p>}
+          <section style={styles.staffSection} aria-labelledby="staff-heading">
+            <div style={styles.sectionHeading}>
+              <div>
+                <p style={styles.eyebrow}>TEAM DIRECTORY</p>
+                <h2 id="staff-heading" style={styles.sectionTitle}>Hotel staff</h2>
+              </div>
+              {!staffLoading && !staffError && (
+                <span style={styles.staffCount}>{staff.length} {staff.length === 1 ? 'account' : 'accounts'}</span>
+              )}
+            </div>
+            {staffLoading ? (
+              <p style={styles.staffMessage}>Loading hotel staff…</p>
+            ) : staffError ? (
+              <p role="alert" style={styles.error}>{staffError}</p>
+            ) : staff.length === 0 ? (
+              <p style={styles.staffMessage}>No hotel staff accounts are available.</p>
+            ) : (
+              <div style={styles.staffGrid}>
+                {staff.map((member) => (
+                  <article key={member.id} style={styles.staffCard}>
+                    <span style={styles.staffAvatar} aria-hidden="true">
+                      {(member.name || 'S').trim().charAt(0).toUpperCase()}
+                    </span>
+                    <span style={styles.staffDetails}>
+                      <strong style={styles.staffName}>{member.name || 'Unnamed staff'}</strong>
+                      <small style={styles.staffEmail}>{member.email || 'No email listed'}</small>
+                      <small style={styles.staffDatabase}>{member.database_name || 'No workspace assigned'}</small>
+                    </span>
+                    <span style={styles.staffRole}>{member.role || 'Staff'}</span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
           <div style={styles.sectionHeading}>
             <div>
               <p style={styles.eyebrow}>QUICK ACCESS</p>
@@ -198,6 +267,84 @@ const styles = {
     justifyContent: 'space-between',
     gap: 15,
     margin: '24px 0 14px',
+  },
+  staffSection: {
+    marginTop: 24,
+    padding: 18,
+    border: '1px solid #e6ece9',
+    borderRadius: 13,
+    background: '#fbfcfb',
+  },
+  staffCount: {
+    color: '#78868a',
+    fontSize: 11,
+  },
+  staffMessage: {
+    margin: '12px 0 2px',
+    color: '#78868a',
+    fontSize: 12,
+  },
+  staffGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+    gap: 10,
+  },
+  staffCard: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 11,
+    padding: 12,
+    border: '1px solid #e6ece9',
+    borderRadius: 11,
+    background: '#fff',
+  },
+  staffAvatar: {
+    display: 'grid',
+    width: 36,
+    height: 36,
+    flex: '0 0 auto',
+    placeItems: 'center',
+    borderRadius: 11,
+    background: 'color-mix(in srgb, var(--brand-primary, #3c6047) 10%, white)',
+    color: 'var(--brand-primary, #3c6047)',
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  staffDetails: {
+    display: 'grid',
+    minWidth: 0,
+    gap: 3,
+  },
+  staffName: {
+    overflow: 'hidden',
+    color: '#263238',
+    fontSize: 12,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  staffEmail: {
+    overflow: 'hidden',
+    color: '#78868a',
+    fontSize: 10,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  staffDatabase: {
+    overflow: 'hidden',
+    color: '#78868a',
+    fontSize: 9,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  staffRole: {
+    marginLeft: 'auto',
+    padding: '5px 8px',
+    borderRadius: 20,
+    background: 'color-mix(in srgb, var(--brand-secondary, #697b57) 12%, white)',
+    color: 'var(--brand-secondary, #697b57)',
+    fontSize: 9,
+    fontWeight: 650,
   },
   sectionTitle: {
     margin: '5px 0 0',

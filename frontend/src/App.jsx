@@ -8,6 +8,7 @@ import Settings from "./pages/Settings";
 import Tables from "./pages/Tables";
 import Customer from "./pages/Customer";
 import Admin from "./pages/admin";
+import PackagePlanPage from "./pages/PackagePlan";
 import AdminLayout from "./components/AdminLayout";
 function App() {
   return (
@@ -20,8 +21,9 @@ function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/tables" element={<Tables />} />
-          <Route path="/admin" element={<Admin />} />
         </Route>
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/package-plan" element={<PackagePlanPage />} />
         <Route path="/customer/table/:tableId" element={<Customer />} />
       </Routes>
     </BrowserRouter>
