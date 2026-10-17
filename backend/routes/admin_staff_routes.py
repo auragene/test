@@ -71,12 +71,51 @@ def _initialize_tenant_database(database_name, staff_user, created_at, created_d
         created_databases.add(database_name)
 
     tenant["users"].insert_one({
-        "name": staff_user["name"],
+        "name": staff_user["restaurant_name"],
         "email": staff_user["email"],
         "phone": staff_user["phone"],
-        "hotel_name": staff_user["hotel_name"],
+        "role": "admin",
+        "password_hash": staff_user["password_hash"],
         "created_at": created_at,
         "updated_at": created_at,
+    })
+
+    tenant["hotel_settings"].insert_one({
+        "name": staff_user["restaurant_name"],
+        "description": "A premium dining experience crafted for every palate.",
+        "logo_url": "",
+        "banner_url": "",
+        "phone": staff_user["phone"],
+        "address": "",
+        "primary_color": "#00b757",
+        "secondary_color": "#d4fe70",
+        "welcome_message": (
+            f"Welcome to {staff_user['restaurant_name']}! "
+            "Scan & order at your leisure."
+        ),
+        "currency": "₹",
+    })
+
+    tenant["products"].insert_one({
+        "name": "Fresh Lime Soda",
+        "description": "Zesy lime juice with sparkling water, sweet or salted.",
+        "image_url": "",
+        "category": "Drinks",
+        "price": 40,
+        "available": True,
+        "ingredients": ["Lime Juice", "Soda Water", "Salt / Sugar"],
+        "prep_time": "3 minutes",
+        "special_notes": "Choose sweet, salted, or mixed.",
+        "created_at": created_at,
+        "updated_at": created_at,
+    })
+
+    tenant["tables"].insert_one({
+        "table_name": "A",
+        "active": True,
+        "customer_counter": 1,
+        "created_at": created_at,
+        "customer_sequence": 2,
     })
 
 
@@ -161,11 +200,15 @@ def create_hotel_staff():
         return jsonify({"error": "That database name already exists"}), 409
 
     created_at = datetime.now(timezone.utc)
+    restaurant_name = values["hotel_name"]
+    if not restaurant_name.lower().endswith("restaurant"):
+        restaurant_name = f"{restaurant_name} Restaurant"
     staff_user = {
         "name": values["name"],
         "phone": values["phone"],
         "email": values["email"],
         "hotel_name": values["hotel_name"],
+        "restaurant_name": restaurant_name,
         "database_name": database_name,
         "status": data["status"],
         "password_hash": generate_password_hash(values["password"]),
@@ -181,6 +224,7 @@ def create_hotel_staff():
             created_at,
             created_databases,
         )
+        staff_user.pop("restaurant_name")
         result = staff_collection.insert_one(staff_user)
         staff_user["_id"] = result.inserted_id
     except Exception:
