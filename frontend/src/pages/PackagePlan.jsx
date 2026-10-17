@@ -24,7 +24,7 @@ export default function PackagePlanPage() {
         <div className="plans-intro">
           <p className="plans-eyebrow">Subscription plans</p>
           <h1>Choose the plan that works for you</h1>
-          <p>Compare plans for your hotel dashboard and ordering tools.</p>
+          <p>Compare plans for your hotel dashboard and ordering tools</p>
         </div>
 
         <div className="plans-grid">
