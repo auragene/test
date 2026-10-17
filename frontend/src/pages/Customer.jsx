@@ -32,6 +32,7 @@ const Customer = () => {
   const [loading, setLoading] = useState(true)
   const [placingOrder, setPlacingOrder] = useState(false)
   const [showMenu, setShowMenu] = useState(true)
+  const [activeCategory, setActiveCategory] = useState('All')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -125,6 +126,31 @@ const Customer = () => {
     }
   }, [sessionToken, tableId, tenant])
 
+  useEffect(() => {
+    if (!table || !tenant || !tableId) return undefined
+
+    async function recordActivity() {
+      if (document.visibilityState !== 'visible') return
+      try {
+        await fetch(
+          `${API_URL}/customer/activity/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}`,
+          { method: 'POST' },
+        )
+      } catch (activityError) {
+        console.error('Could not record customer table activity:', activityError)
+      }
+    }
+
+    recordActivity()
+    const intervalId = window.setInterval(recordActivity, 30000)
+    document.addEventListener('visibilitychange', recordActivity)
+
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', recordActivity)
+    }
+  }, [table, tableId, tenant])
+
   const total = useMemo(
     () =>
       products.reduce(
@@ -132,6 +158,27 @@ const Customer = () => {
         0,
       ),
     [cart, products],
+  )
+
+  const categories = useMemo(
+    () => [
+      'All',
+      ...Array.from(
+        new Set(
+          products
+            .map((product) => product.category?.trim())
+            .filter(Boolean),
+        ),
+      ).sort((firstCategory, secondCategory) => firstCategory.localeCompare(secondCategory)),
+    ],
+    [products],
+  )
+
+  const visibleProducts = useMemo(
+    () => activeCategory === 'All'
+      ? products
+      : products.filter((product) => product.category?.trim() === activeCategory),
+    [activeCategory, products],
   )
 
   function changeQuantity(productId, amount) {
@@ -264,8 +311,27 @@ const Customer = () => {
         <>
           <section aria-label="Available products">
             <h2>{orders.length > 0 ? 'Select more items' : 'Menu'}</h2>
+            {categories.length > 1 && (
+              <div className="customer-category-tabs" role="tablist" aria-label="Menu categories">
+                {categories.map((category) => (
+                  <button
+                    className={activeCategory === category ? 'is-active' : ''}
+                    key={category}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeCategory === category}
+                    onClick={() => setActiveCategory(category)}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            )}
             {!loading && !error && products.length === 0 && <p>No available products right now.</p>}
-            {products.map((product) => (
+            {!loading && !error && products.length > 0 && visibleProducts.length === 0 && (
+              <p>No items are available in this category right now.</p>
+            )}
+            {visibleProducts.map((product) => (
               <article key={product._id}>
                 {product.image_url && <img src={product.image_url} alt={product.name} />}
                 <h3>{product.name}</h3>

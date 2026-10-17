@@ -13,6 +13,7 @@ const EMPTY_SUMMARY = {
   served: 0,
   revenue: 0,
 }
+const ACTIVE_TABLE_WINDOW_MS = 90 * 1000
 
 function isToday(order) {
   const timestamp = order.created_at || order.order_date || order.timestamp
@@ -48,6 +49,21 @@ function summarizeTodayOrders(orders) {
   }, { ...EMPTY_SUMMARY })
 }
 
+function getActiveTables(tables) {
+  const now = Date.now()
+  return tables
+    .filter((table) => {
+      const lastActivity = new Date(table.last_customer_activity_at)
+      return !Number.isNaN(lastActivity.getTime()) && now - lastActivity.getTime() <= ACTIVE_TABLE_WINDOW_MS
+    })
+    .sort((firstTable, secondTable) =>
+      (firstTable.table_name || '').localeCompare(secondTable.table_name || '', undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      }),
+    )
+}
+
 const Dashboard = () => {
   const navigate = useNavigate()
   const [theme] = useState(readDashboardTheme)
@@ -55,6 +71,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [orderSummary, setOrderSummary] = useState(EMPTY_SUMMARY)
+  const [activeTables, setActiveTables] = useState([])
 
   useEffect(() => {
     let active = true
@@ -91,9 +108,25 @@ const Dashboard = () => {
           throw new Error(ordersResult.error || 'Could not load today\'s orders.')
         }
 
+        const tablesResponse = await fetch(`${API_URL}/get-tables`, {
+          credentials: 'include',
+        })
+        const tablesResult = await tablesResponse.json()
+
+        if (tablesResponse.status === 401) {
+          sessionStorage.removeItem('account')
+          clearDashboardTheme()
+          navigate('/login', { replace: true })
+          return
+        }
+        if (!tablesResponse.ok) {
+          throw new Error(tablesResult.error || 'Could not load active tables.')
+        }
+
         if (active) {
           setUserName(userResult.name)
           setOrderSummary(summarizeTodayOrders(ordersResult))
+          setActiveTables(getActiveTables(tablesResult))
         }
       } catch (loadError) {
         console.error('Error loading dashboard settings:', loadError)
@@ -104,8 +137,10 @@ const Dashboard = () => {
     }
 
     loadDashboardSettings()
+    const refreshId = window.setInterval(loadDashboardSettings, 30000)
     return () => {
       active = false
+      window.clearInterval(refreshId)
     }
   }, [navigate])
 
@@ -145,14 +180,7 @@ const Dashboard = () => {
           </div>
           <span aria-hidden="true">✳</span>
         </div>
-        <section className="dashboard-welcome">
-          <div>
-            <p className="dashboard-eyebrow">TODAY&apos;S SERVICE</p>
-            <h2>Service at a glance</h2>
-            <p>Your daily overview, order activity and floor status.</p>
-          </div>
-          <div className="dashboard-welcome__ornament" aria-hidden="true">✳</div>
-        </section>
+
 
         <section className="dashboard-stats" aria-label="Today's overview">
           <article className="dashboard-stat-card">
@@ -229,21 +257,18 @@ const Dashboard = () => {
               <a className="dashboard-panel__link" href="/tables">View all <span aria-hidden="true">→</span></a>
             </div>
             <div className="dashboard-table-list">
-              <div className="dashboard-table-row">
-                <span className="dashboard-table-row__icon">A1</span>
-                <span><strong>Table A1</strong><small>Ready for guests</small></span>
-                <span className="dashboard-table-row__status">Waiting</span>
-              </div>
-              <div className="dashboard-table-row">
-                <span className="dashboard-table-row__icon">A2</span>
-                <span><strong>Table A2</strong><small>Ready for guests</small></span>
-                <span className="dashboard-table-row__status">Waiting</span>
-              </div>
-              <div className="dashboard-table-row">
-                <span className="dashboard-table-row__icon">A3</span>
-                <span><strong>Table A3</strong><small>Ready for guests</small></span>
-                <span className="dashboard-table-row__status">Waiting</span>
-              </div>
+              {activeTables.length === 0 ? (
+                <p className="dashboard-tables__empty">No guests are currently viewing a menu.</p>
+              ) : activeTables.map((table) => (
+                <div className="dashboard-table-row" key={table._id}>
+                  <span className="dashboard-table-row__icon">{table.table_name || '—'}</span>
+                  <span>
+                    <strong>{table.table_name || 'Unnamed table'}</strong>
+                    <small>Customer is viewing the menu</small>
+                  </span>
+                  <span className="dashboard-table-row__status">Active</span>
+                </div>
+              ))}
             </div>
           </article>
         </section>

@@ -528,6 +528,14 @@
   margin-top: 14px;
 }
 
+.dashboard-tables__empty {
+  margin: 18px 0;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .dashboard-table-row {
   display: flex;
   min-height: 62px;

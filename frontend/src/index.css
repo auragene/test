@@ -595,8 +595,44 @@ select:focus-visible {
 }
 
 .customer-menu > section[aria-label="Available products"] > h2,
-.customer-menu > section[aria-label="Available products"] > p {
+.customer-menu > section[aria-label="Available products"] > p,
+.customer-menu > section[aria-label="Available products"] > .customer-category-tabs {
   grid-column: 1 / -1;
+}
+
+.customer-category-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: -3px 0 3px;
+  padding: 2px 1px 8px;
+  scrollbar-width: thin;
+}
+
+.customer-menu .customer-category-tabs button {
+  min-height: 35px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border: 1px solid #dfe8e3;
+  border-radius: 999px;
+  background: #fff;
+  color: #607069;
+  font-size: 10px;
+  font-weight: 700;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.customer-menu .customer-category-tabs button.is-active {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+  color: #fff;
+}
+
+.customer-menu .customer-category-tabs button:hover:not(.is-active) {
+  border-color: color-mix(in srgb, var(--brand-primary) 35%, white);
+  color: var(--brand-primary);
+  transform: translateY(-1px);
 }
 
 .customer-menu > section[aria-label="Available products"] > article,

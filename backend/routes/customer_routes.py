@@ -58,6 +58,11 @@ def get_customer_menu(table_id):
     if table is None:
         return jsonify({"error": "Table not found"}), 404
 
+    database["tables"].update_one(
+        {"_id": table["_id"]},
+        {"$set": {"last_customer_activity_at": datetime.now(timezone.utc)}},
+    )
+
     products = list(database["products"].find(
         {"available": {"$ne": False}},
         {
@@ -81,6 +86,23 @@ def get_customer_menu(table_id):
         "products": products,
         "settings": settings,
     }), 200
+
+
+@customer_bp.route("/customer/activity/<table_id>", methods=["POST"])
+def record_customer_activity(table_id):
+    _, database, error = _get_tenant_database()
+    if error:
+        return error
+
+    table = _find_table(database, table_id)
+    if table is None:
+        return jsonify({"error": "Table not found"}), 404
+
+    database["tables"].update_one(
+        {"_id": table["_id"]},
+        {"$set": {"last_customer_activity_at": datetime.now(timezone.utc)}},
+    )
+    return jsonify({"message": "Table activity recorded."}), 200
 
 
 @customer_bp.route("/customer/orders/<table_id>", methods=["GET"])
