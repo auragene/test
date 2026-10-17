@@ -16,8 +16,10 @@ const emptyProduct = {
 const Products = () => {
   const [products, setProducts] = useState([])
   const [product, setProduct] = useState(emptyProduct)
+  const [editingProductId, setEditingProductId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deletingProductId, setDeletingProductId] = useState(null)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -50,38 +52,109 @@ const Products = () => {
     }))
   }
 
-  async function createProduct(event) {
+  function cancelEdit() {
+    setEditingProductId(null)
+    setProduct({ ...emptyProduct })
+  }
+
+  function startEdit(item) {
+    setEditingProductId(item._id)
+    setProduct({
+      name: item.name || '',
+      description: item.description || '',
+      category: item.category || '',
+      price: item.price ?? '',
+      image_url: item.image_url || '',
+      ingredients: Array.isArray(item.ingredients)
+        ? item.ingredients.join(', ')
+        : item.ingredients || '',
+      prep_time: item.prep_time || '',
+      special_notes: item.special_notes || '',
+      available: item.available ?? true,
+    })
+    setMessage('')
+  }
+
+  async function saveProduct(event) {
     event.preventDefault()
     setSaving(true)
     setMessage('')
 
     try {
-      const response = await fetch(`${API_URL}/create-product`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...product,
-          price: Number(product.price),
-          ingredients: product.ingredients
-            .split(',')
-            .map((ingredient) => ingredient.trim())
-            .filter(Boolean),
-        }),
-      })
+      const isEditing = editingProductId !== null
+      const response = await fetch(
+        isEditing
+          ? `${API_URL}/edit-product/${encodeURIComponent(editingProductId)}`
+          : `${API_URL}/create-product`,
+        {
+          method: isEditing ? 'PATCH' : 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...product,
+            price: Number(product.price),
+            ingredients: product.ingredients
+              .split(',')
+              .map((ingredient) => ingredient.trim())
+              .filter(Boolean),
+          }),
+        },
+      )
       const result = await response.json()
       if (!response.ok) {
-        throw new Error(result.error || 'Could not create product.')
+        throw new Error(result.error || `Could not ${isEditing ? 'update' : 'create'} product.`)
       }
 
-      setProducts((currentProducts) => [...currentProducts, result])
+      if (isEditing) {
+        setProducts((currentProducts) =>
+          currentProducts.map((item) => (item._id === result._id ? result : item)),
+        )
+      } else {
+        setProducts((currentProducts) => [...currentProducts, result])
+      }
+      setEditingProductId(null)
       setProduct({ ...emptyProduct })
-      setMessage('Product created.')
+      setMessage(isEditing ? 'Product updated.' : 'Product created.')
     } catch (error) {
-      console.error('Error creating product:', error)
-      setMessage(error.message || 'Could not create product.')
+      console.error('Error saving product:', error)
+      setMessage(error.message || 'Could not save product.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function deleteProduct(item) {
+    if (!window.confirm(`Delete "${item.name}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeletingProductId(item._id)
+    setMessage('')
+    try {
+      const response = await fetch(
+        `${API_URL}/delete-product/${encodeURIComponent(item._id)}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        },
+      )
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Could not delete product.')
+      }
+
+      setProducts((currentProducts) =>
+        currentProducts.filter((productItem) => productItem._id !== item._id),
+      )
+      if (editingProductId === item._id) {
+        cancelEdit()
+      }
+      setMessage('Product deleted.')
+    } catch (error) {
+      console.error('Error deleting product:', error)
+      setMessage(error.message || 'Could not delete product.')
+    } finally {
+      setDeletingProductId(null)
     }
   }
 
@@ -89,8 +162,8 @@ const Products = () => {
     <main>
       <h1>Products</h1>
 
-      <form onSubmit={createProduct}>
-        <h2>Add a product</h2>
+      <form onSubmit={saveProduct}>
+        <h2>{editingProductId ? 'Edit product' : 'Add a product'}</h2>
         <label>
           Name
           <input name="name" value={product.name} onChange={updateField} required />
@@ -141,8 +214,13 @@ const Products = () => {
           Available
         </label>
         <button type="submit" disabled={saving}>
-          {saving ? 'Saving...' : 'Create product'}
+          {saving ? 'Saving...' : editingProductId ? 'Update product' : 'Create product'}
         </button>
+        {editingProductId && (
+          <button type="button" onClick={cancelEdit} disabled={saving}>
+            Cancel edit
+          </button>
+        )}
       </form>
 
       {message && <p role="status">{message}</p>}
@@ -161,6 +239,20 @@ const Products = () => {
             {item.prep_time && <p>Preparation time: {item.prep_time}</p>}
             {item.special_notes && <p>{item.special_notes}</p>}
             <p>{item.available ? 'Available' : 'Unavailable'}</p>
+            <button
+              type="button"
+              onClick={() => startEdit(item)}
+              disabled={saving || deletingProductId !== null}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteProduct(item)}
+              disabled={saving || deletingProductId !== null}
+            >
+              {deletingProductId === item._id ? 'Deleting...' : 'Delete'}
+            </button>
           </article>
         ))}
       </section>
