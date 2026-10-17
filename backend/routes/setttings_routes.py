@@ -13,7 +13,7 @@ RESERVED_SETTING_FIELDS = {"_id", "password", "password_hash"}
 @settings_bp.route('/get-settings', methods=['GET'])
 def get_settings():
     database_name = session.get("database_name")
-    if not database_name:
+    if not session.get("user_id") or not database_name:
         return jsonify({"error": "Authentication required"}), 401
 
     settings_collection = client[database_name]["hotel_settings"]

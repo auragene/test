@@ -53,3 +53,9 @@ def login():
         "message": "Login successful",
         "user": user_data
     }), 200
+
+
+@login_bp.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"message": "Logout successful"}), 200
