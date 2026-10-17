@@ -13,9 +13,8 @@ const Orders = () => {
   useEffect(() => {
     let active = true
 
-    async function loadOrders() {
-      setLoading(true)
-      setMessage('')
+    async function loadOrders(isInitialLoad = false) {
+      if (isInitialLoad) setLoading(true)
       try {
         const response = await fetch(
           `${API_URL}/get-orders${showAllOrders ? '' : '?active=true'}`,
@@ -25,18 +24,23 @@ const Orders = () => {
         if (!response.ok) {
           throw new Error(result.error || 'Could not load orders.')
         }
-        if (active) setOrders(result)
+        if (active) {
+          setOrders(result)
+          setMessage('')
+        }
       } catch (error) {
         console.error('Error loading orders:', error)
         if (active) setMessage(error.message || 'Could not load orders.')
       } finally {
-        if (active) setLoading(false)
+        if (active && isInitialLoad) setLoading(false)
       }
     }
 
-    loadOrders()
+    loadOrders(true)
+    const refreshInterval = window.setInterval(() => loadOrders(), 5000)
     return () => {
       active = false
+      window.clearInterval(refreshInterval)
     }
   }, [showAllOrders])
 
@@ -84,6 +88,7 @@ const Orders = () => {
         />
         Show served and completed orders
       </label>
+      <p>Orders refresh automatically every 5 seconds.</p>
 
       {message && <p role="status">{message}</p>}
       {loading && <p>Loading orders...</p>}

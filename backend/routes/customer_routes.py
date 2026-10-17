@@ -11,6 +11,21 @@ from routes.login_routes import LOGIN_DATABASE_NAME
 
 customer_bp = Blueprint("customer", __name__)
 
+PUBLIC_SETTINGS_FIELDS = (
+    "hotel_name",
+    "restaurant_name",
+    "display_name",
+    "brand_name",
+    "name",
+    "logo_url",
+    "address",
+    "phone",
+    "contact_number",
+    "currency",
+    "currency_symbol",
+    "description",
+)
+
 
 def _get_tenant_database():
     tenant = request.args.get("tenant", "").strip()
@@ -43,13 +58,28 @@ def get_customer_menu(table_id):
     if table is None:
         return jsonify({"error": "Table not found"}), 404
 
-    products = list(database["products"].find({"available": {"$ne": False}}))
+    products = list(database["products"].find(
+        {"available": {"$ne": False}},
+        {
+            "_id": 1,
+            "name": 1,
+            "description": 1,
+            "price": 1,
+            "image_url": 1,
+            "category": 1,
+        },
+    ))
     for product in products:
         product["_id"] = str(product["_id"])
+
+    settings_projection = {field: 1 for field in PUBLIC_SETTINGS_FIELDS}
+    settings_projection["_id"] = 0
+    settings = database["hotel_settings"].find_one({}, settings_projection) or {}
 
     return jsonify({
         "table": {"_id": str(table["_id"]), "table_name": table.get("table_name", "")},
         "products": products,
+        "settings": settings,
     }), 200
 
 

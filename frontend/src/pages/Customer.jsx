@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { API_URL } from '../api'
 
@@ -24,6 +24,7 @@ const Customer = () => {
   const storageKey = `customer-order:${tenant}:${tableId}`
 
   const [table, setTable] = useState(null)
+  const [settings, setSettings] = useState({})
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
   const [cart, setCart] = useState({})
@@ -35,35 +36,57 @@ const Customer = () => {
   const [storageReady, setStorageReady] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const orderHistoryLoaded = useRef(false)
 
   useEffect(() => {
     let active = true
 
-    async function initializeCustomerPage() {
-      setLoading(true)
-      setError('')
-      setMessage('')
+    setLoading(true)
+    setError('')
+    setMessage('')
+    setOrders([])
+    setShowMenu(true)
+    orderHistoryLoaded.current = false
 
+    if (!tenant) {
+      setError('This QR code is missing its restaurant information.')
+      setLoading(false)
+      return () => {
+        active = false
+      }
+    }
+
+    let token
+    let savedCart = {}
+    try {
+      token = localStorage.getItem(`${storageKey}:session`)
+      if (!token) {
+        token = createSessionToken()
+        localStorage.setItem(`${storageKey}:session`, token)
+      }
+
+      const storedCart = localStorage.getItem(`${storageKey}:cart`)
+      if (storedCart) {
+        const parsedCart = JSON.parse(storedCart)
+        if (parsedCart && typeof parsedCart === 'object' && !Array.isArray(parsedCart)) {
+          savedCart = parsedCart
+        }
+      }
+
+      setSessionToken(token)
+      setCart(savedCart)
+      setStorageReady(true)
+    } catch (storageError) {
+      console.error('Could not restore the customer session:', storageError)
+      setError(storageError.message || 'Could not restore your ordering session.')
+      setLoading(false)
+      return () => {
+        active = false
+      }
+    }
+
+    async function loadMenu() {
       try {
-        if (!tenant) {
-          throw new Error('This QR code is missing its restaurant information.')
-        }
-
-        let token = localStorage.getItem(`${storageKey}:session`)
-        if (!token) {
-          token = createSessionToken()
-          localStorage.setItem(`${storageKey}:session`, token)
-        }
-
-        let savedCart = {}
-        const storedCart = localStorage.getItem(`${storageKey}:cart`)
-        if (storedCart) {
-          const parsedCart = JSON.parse(storedCart)
-          if (parsedCart && typeof parsedCart === 'object' && !Array.isArray(parsedCart)) {
-            savedCart = parsedCart
-          }
-        }
-
         const response = await fetch(
           `${API_URL}/customer/menu/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}`,
         )
@@ -72,36 +95,20 @@ const Customer = () => {
           throw new Error(result.error || 'Could not load the menu.')
         }
 
-        const ordersResponse = await fetch(
-          `${API_URL}/customer/orders/${encodeURIComponent(tableId)}?tenant=${encodeURIComponent(tenant)}&session_token=${encodeURIComponent(token)}`,
-        )
-        const ordersResult = await ordersResponse.json()
-        if (!ordersResponse.ok) {
-          throw new Error(ordersResult.error || 'Could not load your order status.')
-        }
-
         if (active) {
-          setSessionToken(token)
-          setCart(savedCart)
           setTable(result.table)
           setProducts(result.products)
-          setOrders(ordersResult)
-          setShowMenu(ordersResult.length === 0)
-          setStorageReady(true)
+          setSettings(result.settings || {})
         }
       } catch (loadError) {
-        console.error('Could not initialize customer ordering:', loadError)
-        if (active) {
-          setError(loadError.message || 'Could not load the menu.')
-        }
+        console.error('Could not load the customer menu:', loadError)
+        if (active) setError(loadError.message || 'Could not load the menu.')
       } finally {
-        if (active) {
-          setLoading(false)
-        }
+        if (active) setLoading(false)
       }
     }
 
-    initializeCustomerPage()
+    loadMenu()
     return () => {
       active = false
     }
@@ -120,19 +127,26 @@ const Customer = () => {
         if (!response.ok) {
           throw new Error(result.error || 'Could not refresh order statuses.')
         }
-        if (active) setOrders(result)
+        if (active) {
+          setOrders(result)
+          if (!orderHistoryLoaded.current) {
+            setShowMenu(result.length === 0)
+            orderHistoryLoaded.current = true
+          }
+        }
       } catch (statusError) {
         console.error('Could not refresh order statuses:', statusError)
         if (active) setError(statusError.message || 'Could not refresh order statuses.')
       }
     }
 
-    const intervalId = window.setInterval(refreshOrderStatuses, 10000)
+    refreshOrderStatuses()
+    const intervalId = window.setInterval(refreshOrderStatuses, 5000)
     return () => {
       active = false
       window.clearInterval(intervalId)
     }
-  }, [sessionToken, tableId, tenant])
+  }, [sessionToken, tableId, tenant, storageKey])
 
   useEffect(() => {
     if (!storageReady) return
@@ -202,6 +216,7 @@ const Customer = () => {
       setSpecialInstructions('')
       setOrders((currentOrders) => [result, ...currentOrders])
       setShowMenu(false)
+      orderHistoryLoaded.current = true
       setMessage(`Order placed for ${result.customer_number}.`)
     } catch (orderError) {
       console.error('Could not place customer order:', orderError)
@@ -213,7 +228,26 @@ const Customer = () => {
 
   return (
     <main>
-      <h1>{table?.table_name ? `Menu - ${table.table_name}` : 'Restaurant Menu'}</h1>
+      <header>
+        {settings.logo_url && (
+          <img
+            src={settings.logo_url}
+            alt={settings.hotel_name || settings.restaurant_name || settings.name || 'Restaurant'}
+            width="96"
+          />
+        )}
+        <h1>
+          {settings.hotel_name ||
+            settings.restaurant_name ||
+            settings.display_name ||
+            settings.brand_name ||
+            settings.name ||
+            table?.table_name ||
+            'Restaurant Menu'}
+        </h1>
+        {table?.table_name && <p>Table: {table.table_name}</p>}
+        {settings.address && <p>{settings.address}</p>}
+      </header>
       {loading && <p>Loading menu...</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
