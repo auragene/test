@@ -7,7 +7,7 @@ import Products from "./pages/Products";
 import Settings from "./pages/Settings";
 import Tables from "./pages/Tables";
 import Customer from "./pages/Customer";
-import Admin from "./pages/admin";
+import Admin from "./pages/Admin";
 import PackagePlanPage from "./pages/PackagePlan";
 import AdminLayout from "./components/AdminLayout";
 function App() {
