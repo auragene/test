@@ -171,139 +171,198 @@
   color: var(--brand-secondary);
 }
 
-.btn {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 0 14px;
-  border: 0;
+.plan-card-note {
+  display: grid;
+  min-height: 38px;
+  margin: auto 0 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 20%, white);
   border-radius: 9px;
-  background: var(--brand-primary);
-  color: #fff;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 150ms ease, transform 150ms ease;
-}
-
-.btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--brand-primary) 82%, #16211a);
-  transform: translateY(-1px);
-}
-
-.btn:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-
-.btn-block {
-  width: 100%;
-}
-
-.plan-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  overflow-y: auto;
-  place-items: center;
-  padding: 20px;
-  background: rgb(23 34 29 / 48%);
-  backdrop-filter: blur(4px);
-}
-
-.plan-modal {
-  position: relative;
-  width: min(100%, 440px);
-  padding: 30px;
-  border: 1px solid #e5ebe8;
-  border-radius: 17px;
-  background: #fff;
-  box-shadow: 0 24px 70px rgb(0 0 0 / 18%);
-}
-
-.plan-modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border: 1px solid #e6ece9;
-  border-radius: 10px;
-  background: #fff;
-  color: #69777e;
-  cursor: pointer;
-  font-size: 22px;
-}
-
-.plan-modal h2 {
-  margin: 0 32px 10px 0;
-  color: #263238;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 23px;
-  font-weight: 500;
-}
-
-.plan-modal-copy {
-  margin: 0 0 22px;
-  color: #78868a;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.plan-modal form {
-  display: grid;
-  gap: 10px;
-}
-
-.plan-modal .form-label {
-  color: #39474b;
+  background: color-mix(in srgb, var(--brand-primary) 6%, white);
+  color: var(--brand-primary);
   font-size: 11px;
   font-weight: 650;
 }
 
-.plan-modal .form-control {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid #dfe6e6;
-  border-radius: 9px;
-  outline-color: var(--brand-primary);
-  background: #fbfcfc;
-  color: #263238;
-  font-size: 13px;
-}
-
-.plan-pay-button {
-  margin-top: 7px;
-}
-
-.plan-payment-error {
-  margin: 2px 0;
-  color: #a13c34;
-  font-size: 11px;
-}
-
-.plan-payment-success {
-  display: grid;
-  gap: 14px;
-}
-
-.plan-payment-success p {
-  margin: 0;
-  color: #53635b;
+.plans-explore-link {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 9px;
+  margin: 29px auto 0;
+  color: var(--brand-primary);
   font-size: 12px;
-  line-height: 1.7;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.plans-explore-link svg {
+  transition: transform 150ms ease;
+}
+
+.plans-explore-link:hover svg {
+  transform: translateY(3px);
+}
+
+.plans-about {
+  display: grid;
+  width: min(100%, 1040px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(36px, 7vw, 78px);
+  margin: clamp(76px, 11vw, 132px) auto 0;
+  padding: clamp(26px, 4vw, 44px);
+  border: 1px solid #e5ebe7;
+  border-radius: 24px;
+  background: rgb(255 255 255 / 84%);
+  box-shadow: 0 22px 65px rgb(35 52 57 / 5%);
+  scroll-margin-top: 32px;
+}
+
+.plans-about-visual {
+  position: relative;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 18% 18%, color-mix(in srgb, var(--brand-secondary) 30%, transparent), transparent 46%),
+    color-mix(in srgb, var(--brand-primary) 5%, white);
+}
+
+.plans-workspace-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.plans-visual-caption {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 93%);
+  box-shadow: 0 6px 20px rgb(35 52 57 / 9%);
+  color: #53635b;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.plans-caption-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-primary) 13%, white);
+}
+
+.plans-about-copy > .plans-eyebrow {
+  margin-bottom: 12px;
+}
+
+.plans-about-copy h2 {
+  margin: 0;
+  color: #263238;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(29px, 3.4vw, 39px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.13;
+}
+
+.plans-about-lead {
+  margin: 17px 0 25px;
+  color: #78868a;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.plans-benefits {
+  display: grid;
+  gap: 17px;
+}
+
+.plans-benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.plans-benefit-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--brand-primary) 9%, white);
+  color: var(--brand-primary);
+}
+
+.plans-benefit-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.plans-benefit h3 {
+  margin: 1px 0 4px;
+  color: #34423a;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.plans-benefit p {
+  margin: 0;
+  color: #78868a;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.plans-login-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 26px;
+  padding: 11px 15px;
+  border-radius: 9px;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.plans-login-link:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--brand-primary) 82%, #16211a);
+}
+
+.plans-footer {
+  display: flex;
+  width: min(100%, 1040px);
+  justify-content: space-between;
+  gap: 16px;
+  margin: 34px auto 0;
+  padding: 18px 4px 0;
+  border-top: 1px solid #e4eae7;
+  color: #899499;
+  font-size: 10px;
 }
 
 @media (max-width: 900px) {
   .plans-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plans-about {
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    gap: 30px;
+    padding: 24px;
   }
 }
 
@@ -330,7 +389,36 @@
     min-height: 250px;
   }
 
-  .plan-modal {
-    padding: 26px 21px 22px;
+  .plans-about {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-top: 72px;
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .plans-about-visual {
+    max-width: 470px;
+    margin: 0 auto;
+  }
+
+  .plans-about-copy {
+    padding: 0 4px 5px;
+  }
+
+  .plans-about-copy h2 {
+    font-size: 31px;
+  }
+
+  .plans-visual-caption {
+    right: 8px;
+    bottom: 8px;
+    padding: 8px 10px;
+    font-size: 9px;
+  }
+
+  .plans-footer {
+    flex-direction: column;
+    gap: 7px;
   }
 }

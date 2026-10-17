@@ -23,7 +23,7 @@ function App() {
           <Route path="/tables" element={<Tables />} />
         </Route>
         <Route path="/admin" element={<Admin />} />
-        <Route path="/package-plan" element={<PackagePlanPage />} />
+        <Route path="/" element={<PackagePlanPage />} />
         <Route path="/customer/table/:tableId" element={<Customer />} />
       </Routes>
     </BrowserRouter>
