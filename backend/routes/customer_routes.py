@@ -121,8 +121,11 @@ def get_customer_orders(table_id):
         return jsonify({"error": "A valid session token is required"}), 400
 
     orders = list(database["orders"].find({
-        "table_name": str(table["_id"]),
         "session_token": session_token,
+        "$or": [
+            {"table_id": str(table["_id"])},
+            {"table_name": str(table["_id"])},
+        ],
     }).sort("created_at", -1))
     for order in orders:
         order["_id"] = str(order["_id"])
@@ -167,6 +170,10 @@ def create_customer_order(table_id):
     special_instructions = data.get("special_instructions", "")
     if not isinstance(special_instructions, str) or len(special_instructions) > 500:
         return jsonify({"error": "Special instructions must be 500 characters or fewer"}), 400
+
+    customer_name = data.get("customer_name")
+    if not isinstance(customer_name, str) or not customer_name.strip() or len(customer_name.strip()) > 100:
+        return jsonify({"error": "Your name is required and must be 100 characters or fewer"}), 400
 
     product_documents = list(database["products"].find({
         "_id": {"$in": [ObjectId(product_id) for product_id in quantities]},
@@ -213,8 +220,10 @@ def create_customer_order(table_id):
     table_name = table_name or "Table"
     order = {
         "session_token": session_token,
-        "table_name": str(table["_id"]),
+        "table_id": str(table["_id"]),
+        "table_name": table_name,
         "customer_number": f"{table_name}-{sequence_table['customer_sequence']}",
+        "customer_name": customer_name.strip(),
         "items": items,
         "total": float(total),
         "special_instructions": special_instructions.strip(),

@@ -28,6 +28,7 @@ const Customer = () => {
   const [orders, setOrders] = useState([])
   const [cart, setCart] = useState({})
   const [sessionToken, setSessionToken] = useState('')
+  const [customerName, setCustomerName] = useState('')
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [loading, setLoading] = useState(true)
   const [placingOrder, setPlacingOrder] = useState(false)
@@ -44,6 +45,7 @@ const Customer = () => {
     setMessage('')
     setOrders([])
     setCart({})
+    setCustomerName('')
     setSpecialInstructions('')
     setShowMenu(true)
 
@@ -203,6 +205,10 @@ const Customer = () => {
       setError('Add at least one item before placing your order.')
       return
     }
+    if (!customerName.trim()) {
+      setError('Please enter your name before placing the order.')
+      return
+    }
 
     setPlacingOrder(true)
     setError('')
@@ -216,6 +222,7 @@ const Customer = () => {
           body: JSON.stringify({
             session_token: sessionToken,
             items,
+            customer_name: customerName.trim(),
             special_instructions: specialInstructions,
           }),
         },
@@ -226,6 +233,7 @@ const Customer = () => {
       }
 
       setCart({})
+      setCustomerName('')
       setSpecialInstructions('')
       setOrders((currentOrders) => [result, ...currentOrders])
       setShowMenu(false)
@@ -278,6 +286,7 @@ const Customer = () => {
           {orders.map((order) => (
             <article key={order._id}>
               <h3>{order.customer_number}</h3>
+              {order.customer_name && <p>Guest: <strong>{order.customer_name}</strong></p>}
               <p>
                 Status: <strong>{order.status || 'pending'}</strong>
               </p>
@@ -371,6 +380,18 @@ const Customer = () => {
               ))}
             <p>Total: ₹{total}</p>
             <label>
+              Your name
+              <input
+                type="text"
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                maxLength={100}
+                autoComplete="name"
+                required
+                placeholder="Enter your name"
+              />
+            </label>
+            <label>
               Special instructions
               <textarea
                 value={specialInstructions}
@@ -381,7 +402,7 @@ const Customer = () => {
             <button
               type="button"
               onClick={placeOrder}
-              disabled={loading || placingOrder || !sessionToken || total <= 0}
+              disabled={loading || placingOrder || !sessionToken || total <= 0 || !customerName.trim()}
             >
               {placingOrder ? 'Placing order...' : 'Place order'}
             </button>

@@ -721,6 +721,32 @@ select:focus-visible {
   resize: vertical;
 }
 
+.customer-menu > section[aria-label="Your order"] label {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0 0;
+  color: #59666a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.customer-menu > section[aria-label="Your order"] input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid #dfe6e6;
+  border-radius: 9px;
+  outline: none;
+  background: #fbfcfc;
+  color: #263238;
+}
+
+.customer-menu > section[aria-label="Your order"] input:focus,
+.customer-menu > section[aria-label="Your order"] textarea:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 13%, transparent);
+}
+
 @media (max-width: 760px) {
   .login-page {
     grid-template-columns: 1fr;

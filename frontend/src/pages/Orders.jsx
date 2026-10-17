@@ -257,7 +257,7 @@ const Orders = () => {
                           <header className="order-card__heading">
                             <div>
                               <strong>Table {order.table_name || order.table_id || '—'}</strong>
-                              <small>Customer {order.customer_number || '—'}</small>
+                              <small>{order.customer_name || 'Guest'} · {order.customer_number || '—'}</small>
                             </div>
                             <span className="order-card__badge">{column.label}</span>
                           </header>
@@ -298,7 +298,7 @@ const Orders = () => {
                     <header className="order-card__heading">
                       <div>
                         <strong>Table {order.table_name || order.table_id || '—'}</strong>
-                        <small>Customer {order.customer_number || '—'}</small>
+                        <small>{order.customer_name || 'Guest'} · {order.customer_number || '—'}</small>
                       </div>
                       <span className="order-card__badge">Served</span>
                     </header>
